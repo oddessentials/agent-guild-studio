@@ -1,0 +1,41 @@
+{
+ "release": "art",
+ "packs": {
+  "guild": {
+   "asset": "art-guild-a7c2adc04e1318d4.zip",
+   "size": 619367638,
+   "sha256": "a7c2adc04e1318d49d78aecbda5c9d443d6fe467464d38d7a69c1400e781e658"
+  },
+  "orbital": {
+   "asset": "art-orbital-df7b14f107280cee.zip",
+   "size": 528823779,
+   "sha256": "df7b14f107280ceec0ae8f6ff2f7e362872377812f7c25b7728c2d74eb497d55"
+  },
+  "grove": {
+   "asset": "art-grove-0345f4ca3b221650.zip",
+   "size": 512925264,
+   "sha256": "0345f4ca3b2216502505d644c66acc790756f29bcc3a2f52695de2c1599d5abf"
+  },
+  "professional": {
+   "asset": "art-professional-77c956bba9f0de76.zip",
+   "size": 447356746,
+   "sha256": "77c956bba9f0de76dc8bfb16564714b00fbd103a0e2ef1edd9dcd666bcec17aa"
+  },
+  "goblinville": {
+   "asset": "art-goblinville-9afa5a7b53bb4b1f.zip",
+   "size": 486341985,
+   "sha256": "9afa5a7b53bb4b1f461c6e75e2a93c62b29e8c54e6fb7e9747659112fcb52227"
+  },
+  "gnomeland": {
+   "asset": "art-gnomeland-0476f4a429462f21.zip",
+   "size": 299477307,
+   "sha256": "0476f4a429462f2185680daf56efa321edd2237768b4bc348266ef2c9bbb6a02"
+  },
+  "helpers": {
+   "asset": "art-helpers-86dc8e32e19fc356.zip",
+   "size": 196610598,
+   "sha256": "86dc8e32e19fc356a52613fb2ad52e468b91c269d9b6c9d981b59dc01f02afbf"
+  }
+ },
+ "art": "f1495457eb4a741b"
+}

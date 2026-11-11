@@ -1,0 +1,8 @@
+.godot/
+/build/
+/.cache/
+/assets/
+/.agent-guild/
+*.tmp
+__pycache__/
+node_modules/

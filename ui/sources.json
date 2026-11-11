@@ -1,0 +1,627 @@
+{
+ "fonts/almendra-bold-OFL.txt": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/fonts/OFL.txt",
+  "how": "copy",
+  "sha256": "b7eae5e3c3447f70caa14e0c43f5e0d953f54ee59df406f6362863bcee1a0a95"
+ },
+ "fonts/almendra-bold.woff2": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/fonts/almendra-bold.woff2",
+  "how": "copy",
+  "sha256": "702e5a529ffdc5f6bccda377f2b80d1824723a73b0cb5b4ab78f8d644c57d051"
+ },
+ "fonts/cinzel-OFL.txt": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/fonts/OFL.txt",
+  "how": "copy",
+  "sha256": "f2b3029aba64c378bf0963b62945eee15e564fe4330b934c8f2eb058282b5e83"
+ },
+ "fonts/cinzel.woff2": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/fonts/cinzel.woff2",
+  "how": "copy",
+  "sha256": "09941fb1c169c38fd414536b37690057fc01b3117a5c63dd6571186540c8f370"
+ },
+ "fonts/emoji-OFL.txt": {
+  "from": "google/fonts@097bc1b8c04c3224087c2ae95f7a923859b778cf:ofl/notocoloremoji/OFL.txt",
+  "how": "copy",
+  "sha256": "ac564676d10054a8445923dfc2dfb13c042d97888bd27c1b6ec6dfe89a9d8d62"
+ },
+ "fonts/emoji.ttf": {
+  "from": "google/fonts@097bc1b8c04c3224087c2ae95f7a923859b778cf:ofl/notocoloremoji/NotoColorEmoji-Regular.ttf",
+  "how": "cut to U+2600-27BF, U+1F000-1FAFF on a 1020/300 line with fontTools 4.61.1",
+  "sha256": "4fb4e2d661b1d6ae39c43fd1b895c88051728ce464e59e12b55ff7d9c62c35ab"
+ },
+ "fonts/exo2-OFL.txt": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/fonts/OFL.txt",
+  "how": "copy",
+  "sha256": "7f95a8eeecc6904ffc81cd10cc8ebc7fcee72a67922924bf45f02dff03b88127"
+ },
+ "fonts/exo2.woff2": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/fonts/exo2.woff2",
+  "how": "copy",
+  "sha256": "4a259dde317e08aa5d37e6eb684e222ae833516b2a0fccba36ee5e36224f16be"
+ },
+ "fonts/fraunces-OFL.txt": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/fonts/OFL.txt",
+  "how": "copy",
+  "sha256": "bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b"
+ },
+ "fonts/fraunces.woff2": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/fonts/fraunces.woff2",
+  "how": "copy",
+  "sha256": "7f9d191d999336d3b9790afa72e1358e50a13b06d4f289341e92a311967a80f9"
+ },
+ "fonts/germania-one-OFL.txt": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/fonts/OFL.txt",
+  "how": "copy",
+  "sha256": "b7574cd4c76770e5e3915d16bd93f09663bd77cb041a4ec09d824c52b540529a"
+ },
+ "fonts/germania-one.woff2": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/fonts/germania-one.woff2",
+  "how": "copy",
+  "sha256": "de1a7235bbeda5d5ebf5b0afca6a0b106530d74aeffb393ab457ec8a670ca4e6"
+ },
+ "fonts/inter-OFL.txt": {
+  "from": "rsms/inter@v4.1:LICENSE.txt",
+  "how": "copy",
+  "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
+ },
+ "fonts/inter.woff2": {
+  "from": "rsms/inter@v4.1:docs/font-files/InterVariable.woff2",
+  "how": "copy",
+  "sha256": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3"
+ },
+ "fonts/symbols-OFL.txt": {
+  "from": "google/fonts@097bc1b8c04c3224087c2ae95f7a923859b778cf:ofl/notosanssymbols2/OFL.txt",
+  "how": "copy",
+  "sha256": "b118dd41337806a5d4797052c77caf3bd096aed783e5eb21b4d11154351e1ac0"
+ },
+ "fonts/symbols-mono-OFL.txt": {
+  "from": "google/fonts@097bc1b8c04c3224087c2ae95f7a923859b778cf:ofl/notosansmono/OFL.txt",
+  "how": "copy",
+  "sha256": "cee9892f9f0cc8fe882c9e9537ee6a89621d86ee7ceaf70b02e2b2b1c25c061a"
+ },
+ "fonts/symbols-mono.ttf": {
+  "from": "google/fonts@097bc1b8c04c3224087c2ae95f7a923859b778cf:ofl/notosansmono/NotoSansMono[wdth,wght].ttf",
+  "how": "cut to U+2100-214F, U+2190-21FF at {'wdth': 100, 'wght': 400} on a 1020/300 line with fontTools 4.61.1",
+  "sha256": "46253c46ead231150a5822cf3beb85d7f1d24e3448a4fe7e59d8dc3be5991187"
+ },
+ "fonts/symbols.ttf": {
+  "from": "google/fonts@097bc1b8c04c3224087c2ae95f7a923859b778cf:ofl/notosanssymbols2/NotoSansSymbols2-Regular.ttf",
+  "how": "cut to U+2300-23FF, U+25A0-25FF, U+2600-26FF, U+2700-27BF, U+2800-28FF, U+2B00-2BFF on a 1020/300 line with fontTools 4.61.1",
+  "sha256": "c2e731639e0b1404585c563628c50568fe498156b39db2652401bed0ca5f00a9"
+ },
+ "icons/LICENSE-lucide.txt": {
+  "from": "lucide-icons/lucide@0.545.0:LICENSE",
+  "how": "copy",
+  "sha256": "3c57143f22dac950efebf84002e360bba5458c7b90fe583b0667aaaef1a7256e"
+ },
+ "icons/board.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/clipboard-list.svg",
+  "how": "line icon, in white",
+  "sha256": "5584f3c854840ae174562485d07f2583268a5daf1ca4b678e9aa8021d3cc72cc"
+ },
+ "icons/branch.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/git-branch.svg",
+  "how": "line icon, in white",
+  "sha256": "d3a990c07729fb34918bed3a93539816431d20f261899722d298da59e47bdfb6"
+ },
+ "icons/camera.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/camera.svg",
+  "how": "line icon, in white",
+  "sha256": "56e36d415c1aa490a5e56dce40902a9526888000df6619030e069f5d4b1b59df"
+ },
+ "icons/check.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/check.svg",
+  "how": "line icon, in white",
+  "sha256": "56817073aa4f0108ee172853f21df0680d48a593ae701c57b2f56034cc1296cb"
+ },
+ "icons/chevron.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/chevron-down.svg",
+  "how": "line icon, in white",
+  "sha256": "21afe63fedc1c70a73f64b9c32be49633b115cd3586452df810e2231ac69e886"
+ },
+ "icons/close.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-close",
+  "how": "line icon, in white",
+  "sha256": "571fd86878fbbf409dfa593940d8303d08e0b680a48f09a9107f10f5a46ccc3e"
+ },
+ "icons/download.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/download.svg",
+  "how": "line icon, in white",
+  "sha256": "e91f26884fd06b6d9b2967f0927da087ee05b0408825fc568ed8c227679e2056"
+ },
+ "icons/fireworks.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/party-popper.svg",
+  "how": "line icon, in white",
+  "sha256": "e6d361eb9358b73740f630aa3bf193a544463b8c24371e3ad86b13ea9a2d8200"
+ },
+ "icons/folder.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/folder.svg",
+  "how": "line icon, in white",
+  "sha256": "5ae49f7b0acad95290a28bdabe80faeb18a9dd9278c5be78b4098e73e45dab35"
+ },
+ "icons/gear.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-gear",
+  "how": "line icon, in white",
+  "sha256": "a4fb6179e620bf9d4e851829ee77206db1c7d61c2c3e1d4d133f2ffac90cf35f"
+ },
+ "icons/history.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/history.svg",
+  "how": "line icon, in white",
+  "sha256": "3e0b1884bfb5f99430b0366ebc7403aefd0d48afcd068b7b98ff00224917c722"
+ },
+ "icons/info.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-info",
+  "how": "line icon, in white",
+  "sha256": "69182bf812f7ed3f0b92f3316e57ebfe34bd9a6813afed4f1cf37644437be837"
+ },
+ "icons/labels.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/tag.svg",
+  "how": "line icon, in white",
+  "sha256": "2cd459d3c12f508357e4a90e3b1453bf70fcce5c2951c90a15fbf5dbc317f13a"
+ },
+ "icons/looks.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/palette.svg",
+  "how": "line icon, in white",
+  "sha256": "18597c96a24c2e9de823a9df26ccb4ea06cbb77adde91b605cd1ff7b8995e2e5"
+ },
+ "icons/menu.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-menu",
+  "how": "line icon, in white",
+  "sha256": "a5ef10fdc230fa70ea34550b510881e10efc2bef14acdbc22a434a8a0be2a27e"
+ },
+ "icons/moon.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-moon",
+  "how": "line icon, in white",
+  "sha256": "9769cb99a60e3cdbe655540de9bb5b00be0263730deb154ce791b18dcd5ebc29"
+ },
+ "icons/new.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/plus.svg",
+  "how": "line icon, in white",
+  "sha256": "bd8369db62129bfab0a75e65fcb0b1cd24da52497367dfa32c57d40e4f4c50b5"
+ },
+ "icons/overview.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/house.svg",
+  "how": "line icon, in white",
+  "sha256": "6772504c2af8a7ca1592052d595f574ec4a0355dc4075069b2ded392605647ce"
+ },
+ "icons/play.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-play",
+  "how": "line icon, in white",
+  "sha256": "4b8e426b2177390265f9d26d783e5c3ba87b8bfb5bae87abc3d8510aac1fc480"
+ },
+ "icons/power.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-power",
+  "how": "line icon, in white",
+  "sha256": "15289d8e7a6d76a927e1ecd4f0ce71e219654b3903d0f96203103f353a7826c0"
+ },
+ "icons/server.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-server",
+  "how": "line icon, in white",
+  "sha256": "a83e4a1f3c5ec96e6c30cc0beac649a2b2e02070b525794d5e33297fc1f7b297"
+ },
+ "icons/sun.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/styles.css --icon-sun",
+  "how": "line icon, in white",
+  "sha256": "7bda8fe4507231dc98a54f97d66bed987288d75e3acdff79ebe6d931c0647a83"
+ },
+ "icons/up.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/arrow-up.svg",
+  "how": "line icon, in white",
+  "sha256": "3ce99b3b70b6610932c8615735aa68a8b7994fef479651a6a6d93d6c8240347c"
+ },
+ "icons/warning.svg": {
+  "from": "lucide-icons/lucide@0.545.0:icons/triangle-alert.svg",
+  "how": "line icon, in white",
+  "sha256": "c5d90d091ebdad196522c301841ab0fd45f41b32bbd94d9c2c0d3689e7fe4be1"
+ },
+ "providers/terminal-ai-chat.svg": {
+  "from": "oddessentials/agent-guild@v1.24.1:web/icons/terminal-ai-chat.svg",
+  "how": "filters removed",
+  "sha256": "992791934149eb01bc23388fd5e328360f689d8f827a7f4d44dd7cfecedc43a4"
+ },
+ "skins/gnomeland/cog.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/cog.svg",
+  "how": "copy",
+  "sha256": "b398411eba03ae910f4d0be9fc93693455552339871459972241a84f45d8008c"
+ },
+ "skins/gnomeland/crystal.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/crystal.svg",
+  "how": "copy",
+  "sha256": "33c8e5415790bb1d0f0d1a6d18a29f1252bcee11c0298744508935a3cd2ccc1e"
+ },
+ "skins/gnomeland/empty-state.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/empty-state.webp",
+  "how": "copy",
+  "sha256": "e8ddcc16f94d0f3750cfe63b1e799d0912fd1e12a16f89fdade3a9c2aeda6fa6"
+ },
+ "skins/gnomeland/frame.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/frame.svg",
+  "how": "copy",
+  "sha256": "1d7070906188d1d5e5a50b20b8766d6c81bc4ddeab8901decfc42ed848f51599"
+ },
+ "skins/gnomeland/level.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/level.svg",
+  "how": "copy",
+  "sha256": "3e58f950a1e9e5ffae4e49c766270d2d9c70c68718774096f484758a70c3e66a"
+ },
+ "skins/gnomeland/lock.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/lock.svg",
+  "how": "copy",
+  "sha256": "4e630ca60f152bec42ef0174a0d5a38403f2ba7131319faa92b1f9368ebd9896"
+ },
+ "skins/gnomeland/providers/anthropic.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/icons/anthropic.webp",
+  "how": "copy",
+  "sha256": "6604af87d8c8fecf933a21bcfc9fd677281ab53b49933cd0b68a8e5e0b46977f"
+ },
+ "skins/gnomeland/providers/docker.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/icons/docker.webp",
+  "how": "copy",
+  "sha256": "968ac2635d8bfceaa824318f46c2e54c3cd52e02481129dae09de75b1d6a0dc6"
+ },
+ "skins/gnomeland/providers/google.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/icons/google.webp",
+  "how": "copy",
+  "sha256": "01e7fc713f030864a37b087e2458c44b825a32dae7db672717998b86b6ee8be6"
+ },
+ "skins/gnomeland/providers/openai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/icons/openai.webp",
+  "how": "copy",
+  "sha256": "4d395a61c0f010de7b68ae25fc6655805893b2d366aaab593dae1d7f7fb89d42"
+ },
+ "skins/gnomeland/providers/shell.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/icons/shell.webp",
+  "how": "copy",
+  "sha256": "a24ead0dd93aa65d85ead465f83351787305ab856c2b0e526704b8799d8bee6c"
+ },
+ "skins/gnomeland/providers/xai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/icons/xai.webp",
+  "how": "copy",
+  "sha256": "648a9a32c903205193319a35821ed02fad25320d1608daf9556b80b3ea8725bf"
+ },
+ "skins/gnomeland/tokens.json": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/skin.css, web/styles.css",
+  "how": "tokens",
+  "sha256": "fbc1dfb23cdeb64be8b3397624d01aec18c6dbcccb5f90032574769b41706d49"
+ },
+ "skins/gnomeland/wheel.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/gnomeland/ui/wheel.svg",
+  "how": "copy",
+  "sha256": "0850a40069fdb3b367736c1653f91e4a2dc18d2ae0d9d198e9f43320e46322ab"
+ },
+ "skins/goblinville/empty-state.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/empty-state.webp",
+  "how": "copy",
+  "sha256": "0ed1a04c5a73670e61da6f78177702148e7c534cf7f3906fbdb1d5d40912c717"
+ },
+ "skins/goblinville/frame.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/frame.svg",
+  "how": "copy",
+  "sha256": "b74c51eac0cb59d09996f2479c90e3266eb70106c6af7e7bc28a8a9439dabc3a"
+ },
+ "skins/goblinville/gauge.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/gauge.svg",
+  "how": "copy",
+  "sha256": "1701958e1ff85b8bf922731b31bb2be890774c0fbdab2099691d466ccd0ffb3a"
+ },
+ "skins/goblinville/level.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/level.svg",
+  "how": "copy",
+  "sha256": "a9e3d68a25e95ea8abf3c61956053031ee4b54bc371b7f368a7648b9ddbd009e"
+ },
+ "skins/goblinville/lock.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/lock.svg",
+  "how": "copy",
+  "sha256": "40b560a5515ee7af1de11d7981d802c92164e821997efc4ab884353a7494aee4"
+ },
+ "skins/goblinville/nut.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/nut.svg",
+  "how": "copy",
+  "sha256": "6d94ad85e62a6dc3b487882dfd1ac9ff3aa9cb6abbea24a2929feea9d95c6407"
+ },
+ "skins/goblinville/providers/anthropic.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/icons/anthropic.webp",
+  "how": "copy",
+  "sha256": "834318d3ee5134ba1ba5073c90d457a964db7fdf97bcf7a84be5e83fe239c539"
+ },
+ "skins/goblinville/providers/docker.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/icons/docker.webp",
+  "how": "copy",
+  "sha256": "3bdd11c4c57e0d653430d33a30cbdd57573714800d7a6166b5ec91de9424285b"
+ },
+ "skins/goblinville/providers/google.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/icons/google.webp",
+  "how": "copy",
+  "sha256": "20365e2291871b9db36078e0dac466a462d89bb99d1b78ea26d6046517cf39fa"
+ },
+ "skins/goblinville/providers/openai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/icons/openai.webp",
+  "how": "copy",
+  "sha256": "4b496f0791347efb0f2751e1ea06327b8843f19129101f27e03a649c2bff0e0b"
+ },
+ "skins/goblinville/providers/shell.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/icons/shell.webp",
+  "how": "copy",
+  "sha256": "1f3fccce58a8f1e56e589570f0fe38414a1b801e95ddcc37ffa59f9739be489c"
+ },
+ "skins/goblinville/providers/xai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/icons/xai.webp",
+  "how": "copy",
+  "sha256": "b1975b68e5d4194e0bac0b94fa9d29bf5d17b1bbf512f92b0579b130868a7a46"
+ },
+ "skins/goblinville/tokens.json": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/skin.css, web/styles.css",
+  "how": "tokens",
+  "sha256": "ba073501f95873342cba01dd9d42a89c73e7cd3989e849d67cf0523648340458"
+ },
+ "skins/goblinville/tube.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/goblinville/ui/tube.svg",
+  "how": "copy",
+  "sha256": "20a611821f1e16fc7968ee9cbb081bb58e37e1fff4a6a14799f73c6e60ee535a"
+ },
+ "skins/grove/drop.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/ui/drop.svg",
+  "how": "copy",
+  "sha256": "8ac830b916f8f82fc7d31bd25547b1b35eb23ab36f01543cd63d3e30394177b1"
+ },
+ "skins/grove/empty-state.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/ui/empty-state.webp",
+  "how": "copy",
+  "sha256": "ff4dcb3bfad6d59c2a6a3ac9efc218ffba680a7c8df2abf16c5ad22309acbc9a"
+ },
+ "skins/grove/leaf.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/ui/leaf.svg",
+  "how": "copy",
+  "sha256": "fd5f463af21b01ea3639364ad616453c8709d5f6149872a96a972c6231df4a2a"
+ },
+ "skins/grove/lock.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/ui/lock.svg",
+  "how": "copy",
+  "sha256": "da32d1a911c4b2d7e817eac6645e3ab7ddd8a5ff86a3214446dc2d5543609cb9"
+ },
+ "skins/grove/providers/anthropic.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/icons/anthropic.webp",
+  "how": "copy",
+  "sha256": "81c9bc0f884a82e1259046a035ec07c6fbfd09357f0dc3b6b5e9b52764c4309c"
+ },
+ "skins/grove/providers/docker.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/icons/docker.webp",
+  "how": "copy",
+  "sha256": "94f97372d659f1b32d2fa4b6086b4ee487cbacbe03387fc088c2057f26817f67"
+ },
+ "skins/grove/providers/google.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/icons/google.webp",
+  "how": "copy",
+  "sha256": "6b8230dc14efa57f06758d07d6820c846697859af21b38a49b261dc504a712fa"
+ },
+ "skins/grove/providers/openai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/icons/openai.webp",
+  "how": "copy",
+  "sha256": "76fe2ed35213d4d08e9bf499af96d1c9620fb1c693ecbcf9e8966a72f9176a15"
+ },
+ "skins/grove/providers/shell.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/icons/shell.webp",
+  "how": "copy",
+  "sha256": "d0756e40ca8b4484199c3aea5374b88aa58ca296a11559e26d9c7c8e8a973bfa"
+ },
+ "skins/grove/providers/xai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/icons/xai.webp",
+  "how": "copy",
+  "sha256": "ae3061bfd138e1aa1530dc637a391342bc777addcad7bbd38abe5867fd742f36"
+ },
+ "skins/grove/sprig.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/ui/sprig.svg",
+  "how": "copy",
+  "sha256": "f9474622fdbb871fb9b0f21eb9c02e8ff65e1fcb52ad841bf48ff7353dbb6a03"
+ },
+ "skins/grove/stone.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/ui/stone.png",
+  "how": "copy",
+  "sha256": "06da23c1406a55fb2a900f30b2f45430ec8e07dae502a7efea75d4c4df0e2ca9"
+ },
+ "skins/grove/tokens.json": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/grove/skin.css, web/styles.css",
+  "how": "tokens",
+  "sha256": "4dd0adc2c07824340e193b775aa20af298bcada4f8ebe8f243c467d31699c231"
+ },
+ "skins/guild/empty-state.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/empty-state.webp",
+  "how": "copy",
+  "sha256": "4a1c069b957b4f2eab0359e387c5306887716f3276b33ffa4d607df52dcc85d3"
+ },
+ "skins/guild/frame-ornate.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/frame-ornate.png",
+  "how": "copy",
+  "sha256": "0eead7dfd5c14642c9a9011d08b29aa5bde2a13f6f2cc70499021d3fb169110e"
+ },
+ "skins/guild/frame.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/frame.png",
+  "how": "copy",
+  "sha256": "1069b0ce3f1e28b0a17962e873b44d4d6f5db1136e810be524f6abc0bb293ab7"
+ },
+ "skins/guild/gem-mana.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/gem-mana.png",
+  "how": "copy",
+  "sha256": "9fd47950f256ce1a54532ad3949f3ad14bfd0c78e9e0396356f5ab6d4fff25c6"
+ },
+ "skins/guild/gem-vitality.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/gem-vitality.png",
+  "how": "copy",
+  "sha256": "0148032f41fdfd2772d30805a0704fcdbf5356e34e2da621899b011377c52608"
+ },
+ "skins/guild/level-medallion.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/level-medallion.png",
+  "how": "copy",
+  "sha256": "34a9fb279e4234aa6faebc06a6487bff0a3a7b9a1ed4eb7ebc6b4db91e2f1a22"
+ },
+ "skins/guild/padlock.png": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/ui/padlock.png",
+  "how": "copy",
+  "sha256": "e56edda5fd928d3b03c30a079dc4d555544e88aa7b2a2b66da293bcc1244b638"
+ },
+ "skins/guild/providers/anthropic.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/icons/anthropic.webp",
+  "how": "copy",
+  "sha256": "3af7e068ffb347ac2e017e9a870dc12aea329dff0d08402cd0668561f88fa47d"
+ },
+ "skins/guild/providers/docker.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/icons/docker.webp",
+  "how": "copy",
+  "sha256": "96549c6e07ab37f229bd48fedf901fb09f6f0b012a864b4ef4e6ca486e38bf81"
+ },
+ "skins/guild/providers/google.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/icons/google.webp",
+  "how": "copy",
+  "sha256": "43d9a5582ef7687f03c257f9aa4ac35b7c3258b34a0fef90667966b8996bfabd"
+ },
+ "skins/guild/providers/openai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/icons/openai.webp",
+  "how": "copy",
+  "sha256": "fcf936199d0a56e033bd70ed7a060addeeb095d9056f7d9bd30a4bbf4f10d231"
+ },
+ "skins/guild/providers/shell.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/icons/shell.webp",
+  "how": "copy",
+  "sha256": "fd5aba2a41b396083058cd8af9b59940899c6be9174dc6a4077db2bb8fc2e998"
+ },
+ "skins/guild/providers/xai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/icons/xai.webp",
+  "how": "copy",
+  "sha256": "a67702119ced63cf0e7c1f4b8d98cc7a3de8d1788f7231439808016d59e9f51d"
+ },
+ "skins/guild/tokens.json": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/guild/skin.css, web/styles.css",
+  "how": "tokens",
+  "sha256": "790f35bf50055dd2add9c6229f7789b8927c1088c3a0aec90e0a0e2dd1ac3942"
+ },
+ "skins/orbital/empty-state.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/ui/empty-state.webp",
+  "how": "copy",
+  "sha256": "fbbbd275d77d9b2e5247e7f223c1e396372e669901618b692b0665e61b1e4ce4"
+ },
+ "skins/orbital/level.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/ui/level.svg",
+  "how": "copy",
+  "sha256": "7bb0be1b897eb117f0a339928ecd7f6ae6d52a1130d518bca02e158a95a6fc02"
+ },
+ "skins/orbital/lock.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/ui/lock.svg",
+  "how": "copy",
+  "sha256": "05c9fd479c7761028f819c987501935929a2ab3d1e0cbfbc9af00ae1c2f905b9"
+ },
+ "skins/orbital/plasma.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/ui/plasma.svg",
+  "how": "copy",
+  "sha256": "b4ba8a1cbb26981d6e62fa2f4ef351e9f18319029ad885d6f4e460c01a6ca14f"
+ },
+ "skins/orbital/power.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/ui/power.svg",
+  "how": "copy",
+  "sha256": "4300914348d1d09d3340ec12eb2a46cc43ad80f2ced343091174bd8796a471be"
+ },
+ "skins/orbital/providers/anthropic.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/icons/anthropic.webp",
+  "how": "copy",
+  "sha256": "2d2e118df5fbde0234c30a8b8b8ff3ad442243933302c8097ddbbc29b2957235"
+ },
+ "skins/orbital/providers/docker.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/icons/docker.webp",
+  "how": "copy",
+  "sha256": "1a5a06d37f64af0d55382ed375e393ae2a59f8e098f481a8b3b6bcb0fa50bceb"
+ },
+ "skins/orbital/providers/google.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/icons/google.webp",
+  "how": "copy",
+  "sha256": "0047f6a09c3b2f83396fc964231d42fe82b943a6af38c101df6eaa8c3bcfb5f3"
+ },
+ "skins/orbital/providers/openai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/icons/openai.webp",
+  "how": "copy",
+  "sha256": "9370165de92fd8c4674ccaee61e2a48f6a10c663474f41c6ec231ca7694bb794"
+ },
+ "skins/orbital/providers/shell.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/icons/shell.webp",
+  "how": "copy",
+  "sha256": "604aaa3ecedabf89c6d539b0fa2635bd213e88d8c4bd5b890aa42660cf922e75"
+ },
+ "skins/orbital/providers/xai.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/icons/xai.webp",
+  "how": "copy",
+  "sha256": "8b9d817e2ac0b7d312f31add0528c0895c116f27efc88d8fe71d9fdb6ca2edde"
+ },
+ "skins/orbital/tokens.json": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/orbital/skin.css, web/styles.css",
+  "how": "tokens",
+  "sha256": "be3f90da3dfa692c01b8aac1e405b4024b9376413ebb7def2cd58e427a56eac1"
+ },
+ "skins/professional/empty-state-light.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/ui/empty-state-light.webp",
+  "how": "copy",
+  "sha256": "d23105457b44bf4cecdbe9c984f5921089b1e07b3cee011e240755f0cfa5cbb2"
+ },
+ "skins/professional/empty-state.webp": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/ui/empty-state.webp",
+  "how": "copy",
+  "sha256": "8c1c695f1a6a05460896b12f7a6cdd4dfa3f3c45c6dcf93797c841c5d2100ee3"
+ },
+ "skins/professional/lock.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/ui/lock.svg",
+  "how": "copy",
+  "sha256": "e201b2cf1a00c4585fa9cd9d5e5d8ccbead862cc1ea99515ac051e75618de9f7"
+ },
+ "skins/professional/providers/LICENSE.lobehub": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/LICENSE.lobehub",
+  "how": "copy",
+  "sha256": "add9d7531d1b21646317a8958e38fc727506fa39d24bdecb44154d943c82753a"
+ },
+ "skins/professional/providers/anthropic.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/anthropic.svg",
+  "how": "copy",
+  "sha256": "9da181467c99c8f3901e15556aeaded545593ab7da4b332887736f02050af7b4"
+ },
+ "skins/professional/providers/docker.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/docker.svg",
+  "how": "copy",
+  "sha256": "bf5236559c01857e57ddaafb782d0a10ac85323b9f4cd68680dc8647bbe034b0"
+ },
+ "skins/professional/providers/google.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/google.svg",
+  "how": "copy",
+  "sha256": "876eb609f8e4071c5e72653309e7cca414a541638d3ec9ff3f97a73085eb7e6c"
+ },
+ "skins/professional/providers/openai.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/openai.svg",
+  "how": "copy",
+  "sha256": "58b491a653fe556e9b0f2e047e9461618696502d4cd886639ada22aceb90a6e9"
+ },
+ "skins/professional/providers/shell.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/shell.svg",
+  "how": "copy",
+  "sha256": "47072f37a1bc7571b3a148e175d104cb3bd586df1ecf45d4b7335030b3c59879"
+ },
+ "skins/professional/providers/xai.svg": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/icons/xai.svg",
+  "how": "copy",
+  "sha256": "370c361b6dfd59c85ac52612a760dd046af130935791746064597db81680264b"
+ },
+ "skins/professional/tokens.json": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/skins/professional/skin.css, web/styles.css",
+  "how": "tokens",
+  "sha256": "6f5b39228955618636f2c9b05a6d92ad63e1fbc0ba3967ca7ce44034b3a7ea10"
+ },
+ "sounds/License.txt": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/sounds/License.txt",
+  "how": "copy",
+  "sha256": "f7966c773bbed0eca6a9c75081c44a178b38eae112724dbb5fdfbd4192d118a9"
+ },
+ "sounds/manager-stopped.wav": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/sounds/manager-stopped.wav",
+  "how": "copy",
+  "sha256": "45508b352ca2f8fe627139e0c9dd4448802ffa80148d8ad49f8ba74f7431524f"
+ },
+ "sounds/update-available.wav": {
+  "from": "oddessentials/agent-guild@v1.0.0:web/sounds/update-available.wav",
+  "how": "copy",
+  "sha256": "efc5c5eeaf09426f69f01b2e38ae126a36638b7874944b9e96f8524d640c6881"
+ }
+}

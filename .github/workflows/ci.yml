@@ -1,0 +1,427 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - README.md
+      - site/**
+      - tools/make_site.py
+      - tests/site_check.ps1
+      - tests/site_commands.gd
+      - .github/workflows/pages.yml
+      - .github/workflows/ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GODOT_VERSION: 4.7.2
+  GODOT_TEMPLATES_SHA512: ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079
+  GODOT_WINDOWS_SHA512: 83decd58fdf67b9d657958a1ae6bf1929c20785315a81effe245874cdc57acb709bf868e00778a96984338c1b29dafdb453c6847747694621c6ecf5da2259993
+  GODOT_MACOS_SHA512: 38aa16e5bba2083941fc5b3e54be0089bd4cc35e32415f5b9fd9a8a6a7b9818255d44532ea8ef94b5aef56c4b407c2d634fa4f657e4ebe681ebbf59b7bac69ca
+  AGENT_GUILD_COMMIT: 3a3cd721f713068ff78264560e29bf951ff9a37b
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    outputs:
+      sha256: ${{ steps.zip.outputs.sha256 }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      AGENT_GUILD_CHECKOUT: ${{ github.workspace }}/.agent-guild
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: oddessentials/agent-guild
+          ref: ${{ env.AGENT_GUILD_COMMIT }}
+          path: .agent-guild
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Agent Guild's checker needs its image decoders
+        run: npm ci --ignore-scripts --omit=dev --prefix .agent-guild
+      - name: Find Godot's folders
+        run: |
+          Add-Content $env:GITHUB_ENV "TEMPLATES=$env:APPDATA\Godot\export_templates"
+          Add-Content $env:GITHUB_ENV "GODOT=$PWD\.godot-bin\Godot_v$env:GODOT_VERSION-stable_win64_console.exe"
+      - uses: actions/cache@v4
+        id: godot
+        with:
+          path: |
+            .godot-bin
+            ${{ env.TEMPLATES }}
+          key: godot-${{ env.GODOT_VERSION }}-windows-${{ env.GODOT_WINDOWS_SHA512 }}-${{ env.GODOT_TEMPLATES_SHA512 }}
+      - name: Install Godot
+        if: steps.godot.outputs.cache-hit != 'true'
+        run: |
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable"
+          New-Item -ItemType Directory -Force .godot-bin | Out-Null
+          Invoke-WebRequest "$base/Godot_v$env:GODOT_VERSION-stable_win64.exe.zip" -OutFile editor.zip
+          if ((Get-FileHash -Algorithm SHA512 editor.zip).Hash -ne $env:GODOT_WINDOWS_SHA512) { throw 'The Godot editor does not match its pinned SHA-512.' }
+          Expand-Archive editor.zip .godot-bin
+          Remove-Item editor.zip
+          Invoke-WebRequest "$base/Godot_v$env:GODOT_VERSION-stable_export_templates.tpz" -OutFile templates.zip
+          if ((Get-FileHash -Algorithm SHA512 templates.zip).Hash -ne $env:GODOT_TEMPLATES_SHA512) { throw 'The Godot export templates do not match their pinned SHA-512.' }
+          Expand-Archive templates.zip templates-out
+          $dest = "$env:TEMPLATES\$env:GODOT_VERSION.stable"
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          Move-Item templates-out/templates/* $dest
+          Remove-Item -Recurse templates-out, templates.zip
+      - name: Import
+        run: |
+          & $env:GODOT --headless --path . --editor --import --quit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Contract, Studio, pieces and the art download
+        env:
+          STUDIO_PIECES: ${{ github.workspace }}/build/pieces
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download
+          if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
+      - name: Every piece the suites made passes Agent Guild's own check
+        run: |
+          node tools/check_with_agent_guild.mjs build/pieces .agent-guild
+          if ($LASTEXITCODE -ne 0) { throw "Agent Guild refused a piece Studio made." }
+      - name: The agents' page gives the app's own connect commands
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/site_commands.gd
+          if ($LASTEXITCODE -ne 0) { throw 'The page and the Connect dialog differ.' }
+      - name: Package
+        run: ./tools/package.ps1 -Godot $env:GODOT
+      - name: Run the packaged app
+        run: ./tests/package_smoke.ps1 -Zip build/AgentGuildStudio-windows.zip -Dir .smoke
+      - id: zip
+        if: github.event_name != 'pull_request'
+        run: Add-Content $env:GITHUB_OUTPUT "sha256=$((Get-FileHash build/AgentGuildStudio-windows.zip).Hash.ToLower())"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: windows-zip
+          path: build/AgentGuildStudio-windows.zip
+          compression-level: 0
+          retention-days: 7
+
+  sign-windows:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    environment: release-signing
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: pwsh
+    outputs:
+      sha256: ${{ steps.package.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            brand
+            tests
+            tools/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-zip
+          path: ${{ runner.temp }}/unsigned
+      - name: Unpack the build
+        env:
+          BUILT: ${{ needs.build.outputs.sha256 }}
+        run: |
+          $zip = "$env:RUNNER_TEMP/unsigned/AgentGuildStudio-windows.zip"
+          if (-not $env:BUILT -or (Get-FileHash $zip).Hash.ToLower() -ne $env:BUILT) { throw 'The Windows zip is not the one the build made.' }
+          Expand-Archive -LiteralPath $zip -DestinationPath "$env:RUNNER_TEMP/stage"
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign
+        run: |
+          ./tools/windows/sign.ps1 -Tools "$env:RUNNER_TEMP/signing-tools" -Endpoint https://eus.codesigning.azure.net `
+            -Account agent-guild-signing -CertificateProfile agent-guild-public -Files "$env:RUNNER_TEMP/stage/AgentGuildStudio/AgentGuildStudio.exe"
+      - id: package
+        name: Package
+        run: |
+          $zip = "$env:RUNNER_TEMP/signed/AgentGuildStudio-windows.zip"
+          New-Item -ItemType Directory -Force (Split-Path $zip) | Out-Null
+          Compress-Archive -LiteralPath "$env:RUNNER_TEMP/stage/AgentGuildStudio" -DestinationPath $zip
+          Add-Content $env:GITHUB_OUTPUT "sha256=$((Get-FileHash $zip).Hash.ToLower())"
+      - name: Run the signed app
+        run: ./tests/package_smoke.ps1 -Zip "$env:RUNNER_TEMP/signed/AgentGuildStudio-windows.zip" -Dir "$env:RUNNER_TEMP/smoke"
+      - name: Check the signature
+        env:
+          PUBLISHER: ${{ vars.WINDOWS_PUBLISHER }}
+        run: |
+          if (-not $env:PUBLISHER) { throw 'The release-signing environment has no WINDOWS_PUBLISHER variable.' }
+          $exe = "$env:RUNNER_TEMP/smoke/AgentGuildStudio/AgentGuildStudio.exe"
+          $signature = Get-AuthenticodeSignature -LiteralPath $exe
+          if ($signature.Status -ne 'Valid' -or -not $signature.TimeStamperCertificate -or $signature.SignerCertificate.Subject -ne $env:PUBLISHER) {
+            throw "$exe is not signed and timestamped by $env:PUBLISHER ($($signature.Status), $($signature.SignerCertificate.Subject))."
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-signed
+          path: ${{ runner.temp }}/signed/AgentGuildStudio-windows.zip
+          compression-level: 0
+          retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    outputs:
+      sha256: ${{ steps.zip.outputs.sha256 }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      AGENT_GUILD_CHECKOUT: ${{ github.workspace }}/.agent-guild
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: oddessentials/agent-guild
+          ref: ${{ env.AGENT_GUILD_COMMIT }}
+          path: .agent-guild
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Agent Guild's checker needs its image decoders
+        run: npm ci --ignore-scripts --omit=dev --prefix .agent-guild
+      - name: Find Godot's folders
+        run: |
+          Add-Content $env:GITHUB_ENV "TEMPLATES=$HOME/Library/Application Support/Godot/export_templates"
+          Add-Content $env:GITHUB_ENV "GODOT=$PWD/.godot-bin/Godot.app/Contents/MacOS/Godot"
+      - uses: actions/cache@v4
+        id: godot
+        with:
+          path: |
+            .godot-bin
+            ${{ env.TEMPLATES }}
+          key: godot-${{ env.GODOT_VERSION }}-macos-${{ env.GODOT_MACOS_SHA512 }}-${{ env.GODOT_TEMPLATES_SHA512 }}
+      - name: Install Godot
+        if: steps.godot.outputs.cache-hit != 'true'
+        run: |
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable"
+          Invoke-WebRequest "$base/Godot_v$env:GODOT_VERSION-stable_macos.universal.zip" -OutFile editor.zip
+          if ((Get-FileHash -Algorithm SHA512 editor.zip).Hash -ne $env:GODOT_MACOS_SHA512) { throw 'The Godot editor does not match its pinned SHA-512.' }
+          ditto -x -k editor.zip .godot-bin
+          Remove-Item editor.zip
+          Invoke-WebRequest "$base/Godot_v$env:GODOT_VERSION-stable_export_templates.tpz" -OutFile templates.zip
+          if ((Get-FileHash -Algorithm SHA512 templates.zip).Hash -ne $env:GODOT_TEMPLATES_SHA512) { throw 'The Godot export templates do not match their pinned SHA-512.' }
+          $dest = "$env:TEMPLATES/$env:GODOT_VERSION.stable"
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          unzip -j templates.zip templates/macos.zip templates/version.txt -d $dest
+          if ($LASTEXITCODE -ne 0) { throw 'Extracting the macOS template failed.' }
+          Remove-Item templates.zip
+      - name: Import
+        run: |
+          & $env:GODOT --headless --path . --editor --import --quit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Contract, Studio, pieces and the art download
+        env:
+          STUDIO_PIECES: ${{ github.workspace }}/build/pieces
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download
+          if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
+      - name: Every piece the suites made passes Agent Guild's own check
+        run: |
+          node tools/check_with_agent_guild.mjs build/pieces .agent-guild
+          if ($LASTEXITCODE -ne 0) { throw "Agent Guild refused a piece Studio made." }
+      - name: The agents' page gives the app's own connect commands
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/site_commands.gd
+          if ($LASTEXITCODE -ne 0) { throw 'The page and the Connect dialog differ.' }
+      - name: Package
+        run: ./tools/package.ps1 -Godot $env:GODOT -Platform macOS
+      - name: Run the packaged app
+        run: |
+          ditto -x -k build/AgentGuildStudio-macos.zip .smoke
+          codesign --verify --deep --strict .smoke/AgentGuildStudio.app
+          if ($LASTEXITCODE -ne 0) { throw 'The packaged app is not validly signed.' }
+          $iconFile = & /usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' .smoke/AgentGuildStudio.app/Contents/Info.plist
+          if (-not [IO.Path]::GetExtension($iconFile)) { $iconFile += '.icns' }
+          if ((Get-FileHash ".smoke/AgentGuildStudio.app/Contents/Resources/$iconFile").Hash -ne (Get-FileHash brand/icon.icns).Hash) { throw 'The packaged app does not use brand/icon.icns.' }
+          $exe = '.smoke/AgentGuildStudio.app/Contents/MacOS/Agent Guild Studio'
+          $version = & $exe --headless --no-header -- --version
+          if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'The packaged app did not start.' }
+          node tests/mcp_smoke.mjs $exe
+          if ($LASTEXITCODE -ne 0) { throw 'The packaged app did not serve MCP.' }
+      - name: Signing checks
+        shell: bash
+        run: tests/macos_signature.sh .smoke/AgentGuildStudio.app
+      - id: zip
+        if: github.event_name != 'pull_request'
+        run: Add-Content $env:GITHUB_OUTPUT "sha256=$((Get-FileHash build/AgentGuildStudio-macos.zip).Hash.ToLower())"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: macos-zip
+          path: build/AgentGuildStudio-macos.zip
+          compression-level: 0
+          retention-days: 7
+
+  sign-macos:
+    if: github.event_name != 'pull_request'
+    needs: build-macos
+    runs-on: macos-latest
+    timeout-minutes: 240
+    environment: release-signing
+    permissions:
+      contents: read
+    outputs:
+      sha256: ${{ steps.package.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tests
+            tools/macos
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-zip
+          path: ${{ runner.temp }}/unsigned
+      - name: Check the build
+        env:
+          BUILT: ${{ needs.build-macos.outputs.sha256 }}
+        run: |
+          if [ -z "$BUILT" ] || [ "$(shasum -a 256 "$RUNNER_TEMP/unsigned/AgentGuildStudio-macos.zip" | cut -d' ' -f1)" != "$BUILT" ]; then
+            echo "::error::The macOS zip is not the one the build made."
+            exit 1
+          fi
+      - id: package
+        name: Sign, notarize and staple
+        env:
+          APPLE_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12 }}
+          APPLE_P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD }}
+          APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
+          ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
+        run: |
+          zip="$RUNNER_TEMP/signed/AgentGuildStudio-macos.zip"
+          tools/macos/sign.sh "$RUNNER_TEMP/unsigned/AgentGuildStudio-macos.zip" "$zip"
+          echo "sha256=$(shasum -a 256 "$zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Run the signed app
+        run: |
+          ditto -x -k "$RUNNER_TEMP/signed/AgentGuildStudio-macos.zip" "$RUNNER_TEMP/smoke"
+          exe="$RUNNER_TEMP/smoke/AgentGuildStudio.app/Contents/MacOS/Agent Guild Studio"
+          if [ -z "$("$exe" --headless --no-header -- --version)" ]; then
+            echo "::error::The signed app did not start."
+            exit 1
+          fi
+          node tests/mcp_smoke.mjs "$exe"
+      - name: Check the signature
+        run: |
+          source tools/macos/sign.sh
+          check_app "$RUNNER_TEMP/smoke/AgentGuildStudio.app"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-signed
+          path: ${{ runner.temp }}/signed/AgentGuildStudio-macos.zip
+          compression-level: 0
+          retention-days: 7
+
+  release:
+    if: github.event_name == 'push'
+    needs: [build, sign-windows, build-macos, sign-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-signed
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-signed
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.run_number }}
+          WINDOWS_SHA256: ${{ needs.sign-windows.outputs.sha256 }}
+          MACOS_SHA256: ${{ needs.sign-macos.outputs.sha256 }}
+        run: |
+          tag="build-$RUN"
+          assets=(AgentGuildStudio-windows.zip AgentGuildStudio-macos.zip)
+          declare -A want=([AgentGuildStudio-windows.zip]="$WINDOWS_SHA256" [AgentGuildStudio-macos.zip]="$MACOS_SHA256")
+          for file in "${assets[@]}"; do
+            if [ -z "${want[$file]}" ] || [ "$(sha256sum "$file" | cut -d' ' -f1)" != "${want[$file]}" ]; then
+              echo "::error::$file is not the one its job made."
+              exit 1
+            fi
+          done
+          held() {
+            rm -rf held && mkdir held
+            gh release download "$tag" --dir held || return 1
+            [ "$(find held -mindepth 1 -printf '%f\n' | sort | paste -sd' ')" = "$(printf '%s\n' "${assets[@]}" | sort | paste -sd' ')" ] || return 1
+            for file in "${assets[@]}"; do
+              [ "$(sha256sum "held/$file" | cut -d' ' -f1)" = "${want[$file]}" ] || return 1
+            done
+          }
+          tag_commit() {
+            gh api "repos/$GH_REPO/git/matching-refs/tags/$tag" --jq ".[] | select(.ref == \"refs/tags/$tag\") | .object.sha"
+          }
+          releases=$(gh release list --limit 1000 --json tagName,isDraft)
+          state=$(jq -r --arg tag "$tag" '[.[] | select(.tagName == $tag) | if .isDraft then "draft" else "public" end] | join(" ")' <<<"$releases")
+          newest=$(jq '[.[] | select(.isDraft | not) | .tagName | select(test("^build-[0-9]+$")) | ltrimstr("build-") | tonumber] | max // 0' <<<"$releases")
+          tagged=$(tag_commit)
+          case "$state" in
+            public)
+              if [ "$tagged" = "$GITHUB_SHA" ] && held; then
+                echo "$tag is already public with these files."
+                exit 0
+              fi
+              echo "::error::$tag is already public with a different commit or files, and a public release is never replaced."
+              exit 1 ;;
+            draft | "") ;;
+            *)
+              echo "::error::More than one release is named $tag."
+              exit 1 ;;
+          esac
+          if [ "$newest" -gt "$RUN" ]; then
+            echo "::error::build-$newest is already public, so $tag must not become latest."
+            exit 1
+          fi
+          if [ -n "$tagged" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo "::error::The tag $tag points at $tagged, not $GITHUB_SHA."
+            exit 1
+          fi
+          if [ "$state" = draft ]; then
+            target=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
+            if [ "$target" != "$GITHUB_SHA" ]; then
+              echo "::error::The draft $tag is for $target, not $GITHUB_SHA."
+              exit 1
+            fi
+            if ! held; then
+              gh release delete "$tag" --yes
+              state=
+            fi
+          fi
+          if [ -z "$state" ]; then
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Build $RUN" --generate-notes "${assets[@]}"
+          fi
+          if ! held; then
+            echo "::error::The draft $tag does not hold the files its jobs made."
+            exit 1
+          fi
+          gh release edit "$tag" --draft=false --latest
+          tagged=$(tag_commit)
+          if [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo "::error::$tag was published at $tagged, not $GITHUB_SHA."
+            exit 1
+          fi
