@@ -109,6 +109,8 @@ func _checked() -> void:
 		_end("it could not be moved into %s" % StudioArt.folder())
 		return
 	_done += StudioArt.size(pack)
+	received = _done
+	changed.emit()
 	_packs.pop_front()
 	_next()
 

@@ -287,12 +287,7 @@ static func connect_commands(exe: String, before: Array, posix := OS.get_name() 
 		["Codex CLI", "codex mcp add agent-guild-studio \"--\" " + line],
 		["Antigravity CLI", "agy mcp add agent-guild-studio \"--\" " + line],
 		["Grok Build", "grok mcp add agent-guild-studio \"--\" " + line],
-		["Docker Agent", "agents:
-  root:
-    toolsets:
-      - type: mcp
-        command: '%s'
-        args: [%s]" % [exe.replace("'", "''"), yaml_args]],
+		["Docker Agent", "agents:\n  root:\n    toolsets:\n      - type: mcp\n        command: '%s'\n        args: [%s]" % [exe.replace("'", "''"), yaml_args]],
 	]
 
 ## Paths always in single quotes, which PowerShell and POSIX shells both take
@@ -304,7 +299,7 @@ static func _shell_quote(text: String, posix := false) -> String:
 		return "\"--\""
 	if text.begins_with("--") and text.substr(2).replace("-", "").is_valid_identifier():
 		return text
-	return "'%s'" % text.replace("'", "'\''" if posix else "''")
+	return "'%s'" % text.replace("'", "'\\''" if posix else "''")
 
 const CONNECT_WIDTH := 640.0
 

@@ -86,7 +86,7 @@ jobs:
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
       - name: Every piece the suites made passes Agent Guild's own check
         run: |
@@ -235,7 +235,7 @@ jobs:
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
       - name: Every piece the suites made passes Agent Guild's own check
         run: |
