@@ -45,6 +45,12 @@ func run(tree: SceneTree) -> Array:
 	var home: HomePanel = main.home
 	check(home != null and home.visible and not main.panel.visible, "the window did not open on its first screen")
 	check(home.world == "guild" and home.art == "missing" and home.art_bytes == 300000, "the first screen does not say guild's art is a 300000 byte download: %s %d" % [home.art, home.art_bytes])
+	check(_shows(home, "Development build"), "the first screen does not say it is a development build")
+	ProjectSettings.set_setting("application/config/version", "0.1.7")
+	main._show_home()
+	check(_shows(home, "Build 7"), "the first screen does not show its build")
+	ProjectSettings.set_setting("application/config/version", null)
+	main._show_home()
 
 	home.download_requested.emit("guild")
 	check(home.art == "downloading", "a download did not show as under way")
@@ -119,6 +125,11 @@ func _window_processes(tree: SceneTree, main: Node, out: String) -> void:
 			main._window_pids.append(pid)
 	check(await TestRunner.until(tree, func(): return main._window_pids.is_empty()), "closed window processes were not collected")
 	check(pids.all(func(pid): return OS.get_process_exit_code(pid) == 0), "a window process exit code was lost")
+	var asked := OS.execute_with_pipe(OS.get_executable_path(), main.window_args() + ["--headless", "--no-header", "--", "--version"], false)
+	check(not asked.is_empty() and await TestRunner.until(tree, func(): return not OS.is_process_running(asked.pid)), "Studio did not answer --version")
+	if not asked.is_empty():
+		var version: String = asked.stdio.get_buffer(4096).get_string_from_utf8().strip_edges()
+		check(OS.get_process_exit_code(asked.pid) == 0 and version == "dev", "--version says %s, not dev" % version)
 	if OS.get_name() != "Windows":
 		var writer := out.path_join("Bill's $cash `tools`.gd")
 		var ran := out.path_join("ran")
@@ -129,6 +140,9 @@ func _window_processes(tree: SceneTree, main: Node, out: String) -> void:
 		if not child.is_empty():
 			var said: String = child.stdio.get_buffer(4096).get_string_from_utf8() + child.stderr.get_buffer(4096).get_string_from_utf8()
 			check(OS.get_process_exit_code(child.pid) == 0 and FileAccess.file_exists(ran) and said == "", "the standalone window did not run its script, or wrote to MCP's stdout or stderr: %s" % said)
+
+func _shows(home: HomePanel, text: String) -> bool:
+	return home.rows.get_children().any(func(c): return c is Label and c.text == text and not c.is_queued_for_deletion())
 
 func _folder(name: String) -> String:
 	var dir := ProjectSettings.globalize_path(OUT + "folders/" + name)

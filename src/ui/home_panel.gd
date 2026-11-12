@@ -112,6 +112,8 @@ func _build() -> void:
 	_heading("Agents", false)
 	_note("An agent can make pieces with Studio for you.")
 	_button("Connect an agent…", func(): connect_requested.emit())
+	var version := Studio.version()
+	_note("Development build" if version == "dev" else "Build " + version.get_slice(".", 2))
 
 func _heading(text: String, first: bool) -> void:
 	var label := Label.new()

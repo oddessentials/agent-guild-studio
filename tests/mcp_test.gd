@@ -53,7 +53,11 @@ func run(tree: SceneTree) -> Array:
 	_server.read_stdin = false
 	_server.write_line = func(line: String): _lines.append(JSON.parse_string(line))
 	host.add_child(_server)
-	await _ask(tree, "initialize", { "protocolVersion": "2025-11-25" })
+	var info: Dictionary = (await _ask(tree, "initialize", { "protocolVersion": "2025-11-25" })).get("serverInfo", {})
+	ProjectSettings.set_setting("application/config/version", "0.1.7")
+	var stamped: Dictionary = (await _ask(tree, "initialize", { "protocolVersion": "2025-11-25" })).get("serverInfo", {})
+	ProjectSettings.set_setting("application/config/version", null)
+	check(info.get("version") == "dev" and stamped.get("version") == "0.1.7", "the server does not report its build's version: %s, %s" % [info, stamped])
 
 	var listed: Dictionary = await _ask(tree, "tools/list", {})
 	var names: Array = listed.get("tools", []).map(func(t): return t.name)

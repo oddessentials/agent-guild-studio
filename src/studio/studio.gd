@@ -15,6 +15,10 @@ class_name Studio
 ## both arms free, on a skeleton of its own, for character pieces.
 const CLIP_SETS := "res://assets/premium/studio/%s.glb"
 
+static func version() -> String:
+	var stamped := String(ProjectSettings.get_setting("application/config/version", ""))
+	return stamped if stamped != "" else "dev"
+
 ## { world, kind, crew } for "world/crew" or "world/companion", or { reason }.
 static func slot(text: String) -> Dictionary:
 	var parts := text.split("/")
