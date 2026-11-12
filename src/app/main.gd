@@ -43,7 +43,7 @@ func _ready() -> void:
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		options[parts[0]] = parts[1] if parts.size() > 1 else "1"
 	if options.has("version"):
-		print(ProjectSettings.get_setting("application/config/version"))
+		print(Studio.version())
 		get_tree().quit()
 		return
 	if options.has("check-piece") or options.has("check-source"):

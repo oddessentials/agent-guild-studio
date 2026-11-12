@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$Zip, [Parameter(Mandatory)][string]$Dir)
+param([Parameter(Mandatory)][string]$Zip, [Parameter(Mandatory)][string]$Dir, [Parameter(Mandatory)][int]$Release)
 
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $Dir) { throw "$Dir already exists." }
@@ -21,6 +21,12 @@ foreach ($size in 16, 32, 48) {
         throw "The packaged app's $size px icon is not brand/icon.ico."
     }
 }
+$version = "0.1.$Release"
+$info = (Get-Item -LiteralPath $exe).VersionInfo
+if ($info.FileVersion -ne "$version.0" -or $info.ProductVersion -ne "$version.0") { throw "The packaged app's file is version $($info.FileVersion) ($($info.ProductVersion)), not $version.0." }
+$said = Join-Path $Dir 'version.txt'
+$app = Start-Process -FilePath $exe -ArgumentList '--headless', '--no-header', '--', '--version' -RedirectStandardOutput $said -Wait -PassThru
+if ($app.ExitCode -ne 0 -or (Get-Content -LiteralPath $said -Raw).Trim() -ne $version) { throw "The packaged app does not say it is $version." }
 # A piece the packaged app refuses for its own reason shows its checker runs.
 $piece = Join-Path $Dir 'not-a-piece'
 New-Item -ItemType Directory -Path $piece | Out-Null

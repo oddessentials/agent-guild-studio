@@ -45,6 +45,12 @@ func run(tree: SceneTree) -> Array:
 	var home: HomePanel = main.home
 	check(home != null and home.visible and not main.panel.visible, "the window did not open on its first screen")
 	check(home.world == "guild" and home.art == "missing" and home.art_bytes == 300000, "the first screen does not say guild's art is a 300000 byte download: %s %d" % [home.art, home.art_bytes])
+	check(_shows(home, "Development build"), "the first screen does not say it is a development build")
+	ProjectSettings.set_setting("application/config/version", "0.1.7")
+	main._show_home()
+	check(_shows(home, "Build 7"), "the first screen does not show its build")
+	ProjectSettings.set_setting("application/config/version", null)
+	main._show_home()
 
 	home.download_requested.emit("guild")
 	check(home.art == "downloading", "a download did not show as under way")
@@ -87,10 +93,15 @@ func run(tree: SceneTree) -> Array:
 	main.add_child(saving)
 	saving.start(main.panel, main.stage, main.pieces, main.TOOLS, "guild", "light")
 	saving._made = { "where": { "kind": "character", "world": "guild", "crew": "anthropic" } }
+	var theirs := out.path_join(".Failed save.part")
+	DirAccess.make_dir_recursive_absolute(theirs)
+	FileAccess.open(theirs.path_join("keep.txt"), FileAccess.WRITE).store_string("theirs")
 	saving._save(out, "Failed save")
 	main.close()
 	check(quits[0] == 0, "closing interrupted an in-progress save")
 	check(await TestRunner.until(tree, func(): return saving._keeping == ""), "a failed save never finished")
+	check(FileAccess.get_file_as_string(theirs.path_join("keep.txt")) == "theirs" and not DirAccess.dir_exists_absolute(out.path_join(".Failed save.2.part")),
+		"a failed save changed a folder beside it that it did not make, or left its own")
 	check(quits[0] == 0 and saving.active and not main._closing, "a failed save did not cancel closing and leave the window usable")
 	main.close()
 	main.close()
@@ -119,12 +130,38 @@ func _window_processes(tree: SceneTree, main: Node, out: String) -> void:
 			main._window_pids.append(pid)
 	check(await TestRunner.until(tree, func(): return main._window_pids.is_empty()), "closed window processes were not collected")
 	check(pids.all(func(pid): return OS.get_process_exit_code(pid) == 0), "a window process exit code was lost")
+	var asked := OS.execute_with_pipe(OS.get_executable_path(), main.window_args() + ["--headless", "--no-header", "--", "--version"], false)
+	var answer := await _piped(tree, asked)
+	check(answer.ended, "Studio did not answer --version")
+	check(answer.code == 0 and answer.out.strip_edges() == "dev", "--version says %s, not dev" % answer.out)
 	if OS.get_name() != "Windows":
 		var writer := out.path_join("Bill's $cash `tools`.gd")
-		FileAccess.open(writer, FileAccess.WRITE).store_string("extends SceneTree\nfunc _initialize():\n\tprint('window stdout')\n\tprinterr('window stderr')\n\tquit(0)\n")
+		var ran := out.path_join("ran")
+		FileAccess.open(writer, FileAccess.WRITE).store_string("extends SceneTree\nfunc _initialize():\n\tFileAccess.open(%s, FileAccess.WRITE).store_string('ran')\n\tprint('window stdout')\n\tprinterr('window stderr')\n\tquit(0)\n" % var_to_str(ran))
 		command = main.window_command(OS.get_executable_path(), ["--headless", "--no-header", "--script", writer])
-		var output := []
-		check(OS.execute(command[0], command[1], output, true) == 0 and "".join(output) == "", "the standalone window wrote to MCP's stdout or stderr")
+		var child := OS.execute_with_pipe(command[0], command[1], false)
+		var window := await _piped(tree, child)
+		check(window.ended, "the standalone window did not end")
+		check(window.code == 0 and FileAccess.file_exists(ran) and window.out + window.err == "", "the standalone window did not run its script, or wrote to MCP's stdout or stderr: %s" % (window.out + window.err))
+
+func _piped(tree: SceneTree, child: Dictionary) -> Dictionary:
+	var said := { "ended": false, "code": -1, "out": "", "err": "" }
+	if child.is_empty():
+		return said
+	var read := func():
+		said.out += child.stdio.get_buffer(4096).get_string_from_utf8()
+		said.err += child.stderr.get_buffer(4096).get_string_from_utf8()
+	said.ended = await TestRunner.until(tree, func():
+		read.call()
+		return not OS.is_process_running(child.pid))
+	if not said.ended:
+		OS.kill(child.pid)
+	read.call()
+	said.code = OS.get_process_exit_code(child.pid)
+	return said
+
+func _shows(home: HomePanel, text: String) -> bool:
+	return home.rows.get_children().any(func(c): return c is Label and c.text == text and not c.is_queued_for_deletion())
 
 func _folder(name: String) -> String:
 	var dir := ProjectSettings.globalize_path(OUT + "folders/" + name)

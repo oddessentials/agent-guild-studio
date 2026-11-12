@@ -9,7 +9,6 @@ var pid := -1
 var _count := 0
 var _out := ""
 
-# stage "load" (no header checks) and fault "crash" are for tests/pieces_test.gd only.
 func check(path: String, kind: String, clips: Dictionary, stage := "", fault := "") -> Dictionary:
 	var args := ["--check-piece=" + ProjectSettings.globalize_path(path), "--check-kind=" + kind,
 		"--check-clips=" + PieceCheck.clips_arg(clips)]

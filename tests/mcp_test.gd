@@ -53,12 +53,17 @@ func run(tree: SceneTree) -> Array:
 	_server.read_stdin = false
 	_server.write_line = func(line: String): _lines.append(JSON.parse_string(line))
 	host.add_child(_server)
-	await _ask(tree, "initialize", { "protocolVersion": "2025-11-25" })
+	var info: Dictionary = (await _ask(tree, "initialize", { "protocolVersion": "2025-11-25" })).get("serverInfo", {})
+	ProjectSettings.set_setting("application/config/version", "0.1.7")
+	var stamped: Dictionary = (await _ask(tree, "initialize", { "protocolVersion": "2025-11-25" })).get("serverInfo", {})
+	ProjectSettings.set_setting("application/config/version", null)
+	check(info.get("version") == "dev" and stamped.get("version") == "0.1.7", "the server does not report its build's version: %s, %s" % [info, stamped])
 
 	var listed: Dictionary = await _ask(tree, "tools/list", {})
 	var names: Array = listed.get("tools", []).map(func(t): return t.name)
 	check(names == ["list_slots", "make_character", "make_companions", "recolor_look", "check_piece", "list_pieces", "remove_piece", "show_window"], "the tools are %s" % [names])
 	check(listed.get("tools", []).all(func(t): return t.inputSchema.type == "object" and t.annotations.has("readOnlyHint") and t.has("description")), "a tool lacks a schema, hints or a description")
+	check(listed.tools.filter(func(t): return t.name == "check_piece")[0].annotations.openWorldHint == true, "check_piece, which can download a world's art, says it stays offline")
 	for name in ["make_character", "make_companions", "recolor_look"]:
 		var props: Dictionary = listed.tools.filter(func(t): return t.name == name)[0].inputSchema.properties
 		check(props.has("hue") and props.has("tint") and props.has("change_color") and props.has("spread"), "%s takes no color choices" % name)
@@ -90,9 +95,24 @@ func run(tree: SceneTree) -> Array:
 	check(color.get("isError") == true and "color" in String(color.content[0].text) and not DirAccess.dir_exists_absolute(to), "a tint that is no color was not refused before any work")
 	var nothing := await _call(tree, "recolor_look", { "slot": "guild/anthropic", "look": "look1", "to": to })
 	check(nothing.get("isError") == true and "hue" in String(nothing.content[0].text), "a recolor with no color choice was not refused")
+	var theirs := ProjectSettings.globalize_path(OUT + "theirs")
+	DirAccess.make_dir_recursive_absolute(theirs)
+	FileAccess.open(theirs.path_join("notes.txt"), FileAccess.WRITE).store_string("mine")
+	var kept := await _call(tree, "make_character", { "model": "C:/x.glb", "slot": "guild/anthropic", "to": theirs, "replace": true })
+	check(kept.get("isError") == true and "notes.txt" in String(kept.content[0].text) and FileAccess.get_file_as_string(theirs.path_join("notes.txt")) == "mine",
+		"a folder holding someone's own file was not refused before any work: %s" % kept)
 	var four := await _call(tree, "make_companions", { "models": ["a.glb", "b.glb"], "slot": "guild/companion", "to": to })
 	check(four.get("isError") == true and "one model or four" in String(four.content[0].text), "two models for companions were not refused")
 	check(host.opened == 1, "a tool other than show_window opened a window")
+
+	# Text from a person's files (a bone, a title) can hold control characters;
+	# the agent's client reads each line with a strict JSON parser.
+	var raw := []
+	_server.write_line = func(line: String): raw.append(line)
+	_server.receive(StrictJson.stringify({ "jsonrpc": "2.0", "id": "odd", "method": "tools/call", "params": { "name": "bone" + String.chr(1) + String.chr(11), "arguments": {} } }))
+	_server.write_line = func(line: String): _lines.append(JSON.parse_string(line))
+	check(raw.size() == 1 and raw[0].contains("bone\\u0001\\u000b") and RegEx.create_from_string("[\\x00-\\x1f]|\\\\v").search(raw[0]) == null,
+		"a reply holds raw control characters or \\v: %s" % [raw])
 	await _lifecycle(tree, host)
 
 	other.free()

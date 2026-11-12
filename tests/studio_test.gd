@@ -80,6 +80,7 @@ func run(tree: SceneTree) -> Array:
 	var verdict: Dictionary = await validator.check(folder.path_join("character.glb"), "character", lengths)
 	check(verdict.reason == "", "the piece did not pass the game's check: %s" % verdict.reason)
 	validator.free()
+	await _replaces(tree, piece, lengths)
 	_names()
 	await _rigs(tree, default, lengths)
 	await _companions(tree)
@@ -892,6 +893,64 @@ func _gltf(folder: String, name: String, images: Array, buffer: String) -> Strin
 		"accessors": [{ "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] }] }
 	_put(folder.path_join(name), JSON.stringify(gltf).to_utf8_buffer())
 	return folder.path_join(name)
+
+func _replaces(tree: SceneTree, piece: Dictionary, lengths: Dictionary) -> void:
+	var where := { "world": "guild", "kind": "character", "crew": "anthropic" }
+	var folder := ProjectSettings.globalize_path(OUT.path_join("replaced"))
+	var beside := folder.get_base_dir()
+	var taken := [".replaced.part", ".replaced.previous"]
+	var staged := func():
+		var dir := DirAccess.open(beside)
+		if dir == null:
+			return []
+		dir.include_hidden = true
+		var dirs := Array(dir.get_directories()).filter(func(d): return d.begins_with(".replaced."))
+		dirs.sort()
+		return dirs
+	var theirs_kept := func(): return taken.all(func(d): return _files(beside.path_join(d)) == ["keep.txt"] and FileAccess.get_file_as_string(beside.path_join(d).path_join("keep.txt")) == "theirs")
+	for d in staged.call():
+		StudioFiles.remove_tree(beside.path_join(d))
+	StudioFiles.remove_tree(folder)
+	for d in taken:
+		_put(beside.path_join(d).path_join("keep.txt"), "theirs".to_utf8_buffer())
+	_put(folder.path_join("character.glb"), "old".to_utf8_buffer())
+	_put(folder.path_join("piece.json"), "old".to_utf8_buffer())
+	var failed := await Studio._save(tree.root, where, [StudioExport.scene(piece, "character")], { "walk": 99.0 }, "Fails", [], { "out": folder })
+	check(failed == 1 and _files(folder) == ["character.glb", "piece.json"] and FileAccess.get_file_as_string(folder.path_join("character.glb")) == "old",
+		"a piece that failed its check changed the files it would have replaced: %s" % [_files(folder)])
+	check(staged.call() == taken and theirs_kept.call(), "a failed save changed folders beside it that it did not make: %s" % [staged.call()])
+	_put(folder.path_join("notes.txt"), "mine".to_utf8_buffer())
+	var theirs := await Studio._save(tree.root, where, [StudioExport.scene(piece, "character")], lengths, "Theirs", [], { "out": folder })
+	check(theirs == 1 and "notes.txt" in String(Studio.said.reason) and _files(folder) == ["character.glb", "notes.txt", "piece.json"] and FileAccess.get_file_as_string(folder.path_join("character.glb")) == "old",
+		"a folder holding someone's own file was written into: %s" % [_files(folder)])
+	DirAccess.remove_absolute(folder.path_join("notes.txt"))
+	_put(folder.path_join("companion_0.glb"), "stale".to_utf8_buffer())
+	_put(folder.path_join("preview.jpg"), "stale".to_utf8_buffer())
+	var saved := await Studio._save(tree.root, where, [StudioExport.scene(piece, "character")], lengths, "Replaced", [], { "out": folder })
+	check(saved == 0 and _files(folder) == ["character.glb", "piece.json"] and not PieceLibrary.check_folder(folder).has("reason") and FileAccess.get_file_as_string(folder.path_join("character.glb")) != "old",
+		"a piece did not cleanly replace the one in its folder: %s %s" % [Studio.said.get("reason", ""), _files(folder)])
+	check(staged.call() == taken and theirs_kept.call(), "a save changed folders beside it that it did not make, or left its own: %s" % [staged.call()])
+
+	for d in taken:
+		StudioFiles.remove_tree(beside.path_join(d))
+
+	var moved := beside.path_join("moved")
+	var incoming := beside.path_join("incoming")
+	var backup := beside.path_join(".moved.previous")
+	for d in [moved, incoming, backup, beside.path_join(".moved.2.previous")]:
+		StudioFiles.remove_tree(d)
+	_put(backup.path_join("keep.txt"), "theirs".to_utf8_buffer())
+	_put(incoming.path_join("character.glb"), "new".to_utf8_buffer())
+	_put(incoming.path_join("piece.json"), "new".to_utf8_buffer())
+	DirAccess.make_dir_recursive_absolute(moved.path_join("character.glb"))
+	_put(moved.path_join("piece.json"), "old".to_utf8_buffer())
+	var blocked := StudioFiles.move_in(incoming, moved, StudioExport.names())
+	check(blocked != "" and _files(moved) == ["piece.json"] and DirAccess.dir_exists_absolute(moved.path_join("character.glb")) and FileAccess.get_file_as_string(moved.path_join("piece.json")) == "old",
+		"a move that failed did not put back what the folder held: %s %s" % [blocked, _files(moved)])
+	check(_files(backup) == ["keep.txt"] and FileAccess.get_file_as_string(backup.path_join("keep.txt")) == "theirs" and not DirAccess.dir_exists_absolute(beside.path_join(".moved.2.previous")),
+		"a move that failed changed a folder beside it that it did not make, or left its own")
+	for d in [moved, incoming, backup]:
+		StudioFiles.remove_tree(d)
 
 func _put(path: String, bytes: PackedByteArray) -> void:
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())

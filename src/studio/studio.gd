@@ -11,9 +11,13 @@ class_name Studio
 ##   AgentGuildStudio -- --build=ghost.glb[,b.glb,c.glb,d.glb] --slot=grove/companion --out=DIR [--move=rigid|soft] [--variants=tint|turn] [--turn=DEGREES]
 ##   AgentGuildStudio -- --recolour=look0|look1|look2|agent|shell --slot=... --out=DIR [--pick=#RRGGBB|U,V] [--spread=0.15] [--hue=DEGREES] [--tint=#RRGGBB]
 
-## Each world's Studio clip set (tools/premium.py studio): its motions with
+## Each world's Studio clip set: its motions with
 ## both arms free, on a skeleton of its own, for character pieces.
 const CLIP_SETS := "res://assets/premium/studio/%s.glb"
+
+static func version() -> String:
+	var stamped := String(ProjectSettings.get_setting("application/config/version", ""))
+	return stamped if stamped != "" else "dev"
 
 ## { world, kind, crew } for "world/crew" or "world/companion", or { reason }.
 static func slot(text: String) -> Dictionary:
@@ -323,29 +327,42 @@ static func run(host: Node, options: Dictionary) -> int:
 	if made.has("reason"):
 		return _fail(made.reason)
 	var models: Array = made.pieces.map(func(p): return StudioExport.scene(p, where.kind))
-	return await _save(host, where, models, clips, options.get("title", options.build.get_file().get_basename()), made.notes, options)
+	return await _save(host, where, models, clips, options.get("title", options.build.get_slice(",", 0).get_file().get_basename()), made.notes, options)
 
 ## Writes the models as a piece folder, frees them, and checks each as Looks
 ## would.
 static func _save(host: Node, where: Dictionary, models: Array, clips: Dictionary, title: String, notes: Array, options: Dictionary) -> int:
-	var folder := ProjectSettings.globalize_path(options.get("out", "user://studio/build"))
+	var folder := ProjectSettings.globalize_path(options.get("out", "user://studio/build")).rstrip("/\\")
 	var manifest := { "format": 1, "kind": where.kind, "world": where.world, "title": title }
 	if where.kind == "character":
 		manifest.crew = where.crew
-	var reason := StudioExport.save(models, folder, manifest)
+	var other := StudioExport.other(folder)
+	if other != "":
+		for model in models:
+			model.free()
+		return _fail("%s holds %s, which a piece may not" % [folder, other])
+	var part := StudioFiles.make_beside(folder, "part")
+	var reason := StudioExport.save(models, part, manifest) if part != "" else "a folder to work in could not be made in %s" % folder.get_base_dir()
 	for model in models:
 		model.free()
+	if reason == "":
+		var validator := PieceValidator.new()
+		host.add_child(validator)
+		for k in models.size():
+			var file: String = PieceLibrary.FILES[where.kind][k]
+			var verdict: Dictionary = await validator.check(part.path_join(file), where.kind, clips)
+			if verdict.reason != "":
+				reason = "%s did not pass its check: %s" % [file, verdict.reason]
+				break
+		validator.queue_free()
+	if reason == "":
+		reason = PieceLibrary.check_folder(part).get("reason", "")
+	if reason == "":
+		reason = StudioFiles.move_in(part, folder, StudioExport.names())
+	if part != "":
+		StudioFiles.remove_tree(part)
 	if reason != "":
 		return _fail(reason)
-	var validator := PieceValidator.new()
-	host.add_child(validator)
-	for k in models.size():
-		var file: String = PieceLibrary.FILES[where.kind][k]
-		var verdict: Dictionary = await validator.check(folder.path_join(file), where.kind, clips)
-		if verdict.reason != "":
-			validator.queue_free()
-			return _fail("%s did not pass its check: %s" % [file, verdict.reason])
-	validator.queue_free()
 	said = { "folder": folder, "notes": notes }
 	if not quiet:
 		for note in notes:

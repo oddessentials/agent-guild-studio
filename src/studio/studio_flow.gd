@@ -385,12 +385,12 @@ func _save(parent: String, title: String) -> void:
 	panel.working("Saving it in %s…" % parent)
 	await _shown()
 	var reason := await _exact()
-	var part := parent.path_join(".%s.part" % name)
+	var part := ""
 	var folder := ""
 	if reason == "":
 		_working("Saving it in %s…" % parent)
-		StudioFiles.remove_tree(part)
-		reason = _write(part, title)
+		part = StudioFiles.make_beside(parent.path_join(name), "part")
+		reason = _write(part, title) if part != "" else "a folder to work in could not be made"
 	var n := 1
 	while reason == "" and folder == "":
 		var free := parent.path_join(name if n == 1 else "%s (%d)" % [name, n])
@@ -402,7 +402,8 @@ func _save(parent: String, title: String) -> void:
 		elif not DirAccess.dir_exists_absolute(free):
 			reason = "it could not be moved into %s" % free
 	if reason != "":
-		StudioFiles.remove_tree(part)
+		if part != "":
+			StudioFiles.remove_tree(part)
 		_kept("It could not be saved: %s. Nothing was left in %s." % [reason, parent], true)
 		return
 	var id := editing if editing != "" else PieceLibrary.local_id()
