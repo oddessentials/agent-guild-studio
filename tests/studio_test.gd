@@ -900,7 +900,11 @@ func _replaces(tree: SceneTree, piece: Dictionary, lengths: Dictionary) -> void:
 	var beside := folder.get_base_dir()
 	var taken := [".replaced.part", ".replaced.previous"]
 	var staged := func():
-		var dirs := Array(DirAccess.get_directories_at(beside)).filter(func(d): return d.begins_with(".replaced."))
+		var dir := DirAccess.open(beside)
+		if dir == null:
+			return []
+		dir.include_hidden = true
+		var dirs := Array(dir.get_directories()).filter(func(d): return d.begins_with(".replaced."))
 		dirs.sort()
 		return dirs
 	var theirs_kept := func(): return taken.all(func(d): return _files(beside.path_join(d)) == ["keep.txt"] and FileAccess.get_file_as_string(beside.path_join(d).path_join("keep.txt")) == "theirs")
