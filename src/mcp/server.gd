@@ -13,33 +13,22 @@ const INVALID_REQUEST := -32600
 const METHOD_NOT_FOUND := -32601
 const INVALID_PARAMS := -32602
 const UNSUPPORTED_VERSION := -32022
-const PERSON_WAIT_MS := 30000
-const WINDOW_INIT := "studio-window-initialize"
-const WITHOUT_WINDOW := []
 const INSTRUCTIONS := "Agent Guild: Studio makes characters and companions for Agent Guild from a model file, or by recoloring one of a world's own looks. It works without a window.
 Start with list_slots: a piece is made for one slot, a world's crew such as guild/anthropic, or a world's companions such as guild/companion.
-make_character takes one model (.glb, .gltf or .vrm); make_companions takes one model or four; recolor_look changes a world's own look. Each writes a piece folder at `to` and checks it. A world's art downloads the first time it is needed, which can take a while.
+make_character takes one model (.glb, .gltf or .vrm); make_companions takes one model or four; recolor_look starts from a world's own look. Each can change the piece's colors, writes a piece folder at `to` and checks it. A world's art downloads the first time it is needed, which can take a while.
 When Studio can't be sure of a model's bones, make_character says which, and you call it again with `bones`.
-Use check_piece on any piece folder. show_window opens Studio for the person."
+Pieces made here are listed for the person in Studio's window too: list_pieces, remove_piece. Use check_piece on any piece folder. show_window opens Studio for the person."
 
 var host: Node
 var tools: McpTools
 var read_stdin := true
 var write_line := func(line: String): print(line)
-var relay := false
-var window_args: Array = []
-var launch_window := _launch_window
-var write_window := _write_window
 var _thread: Thread
 var _legacy_version := ""
 var _queue: Array = []
 var _active: Dictionary = {}
-var _waiting_since := -1
 var _closed := false
-var _window := {}
-var _window_open := false
-var _window_threads: Array = []
-var _forwarded := {}
+var _left := false
 
 func _ready() -> void:
 	tools = McpTools.new(self)
@@ -70,20 +59,18 @@ func _stdin_closed() -> void:
 	if _thread and not _thread.is_alive():
 		_thread.wait_to_finish()
 		_thread = null
-	if _window_open:
-		if not _window.is_empty():
-			_window.stdio.close()
+	_finish_disconnect()
+
+func _finish_disconnect() -> void:
+	if _left or not _active.is_empty():
 		return
+	_left = true
 	if host and host.has_method("agent_disconnected"):
 		host.agent_disconnected()
 
 func _exit_tree() -> void:
 	if _thread and _thread.is_started() and not _thread.is_alive():
 		_thread.wait_to_finish()
-
-func _process(_delta: float) -> void:
-	if not _queue.is_empty():
-		_pump()
 
 func receive(text: String) -> void:
 	text = text.strip_edges()
@@ -138,50 +125,13 @@ func _notification_received(msg: Dictionary) -> void:
 		var queued = _id_of(_queue[i])
 		if typeof(queued) == typeof(id) and queued == id:
 			_queue.remove_at(i)
-			if i == 0:
-				_waiting_since = -1
 			return
-	if _forwarded.has(id):
-		_forwarded.erase(id)
-		write_window.call(JSON.stringify(msg))
-		return
-	if not _active.is_empty() and typeof(_active.ctx.id) == typeof(id) and _active.ctx.id == id:
-		_active.ctx.cancelled = true
-		tools.cancel(_active.ctx)
+	if not _active.is_empty() and typeof(_active.id) == typeof(id) and _active.id == id:
+		_active.cancelled = true
 
-## Runs waiting requests in order. A world being opened holds the queue; while a
-## render runs, reading tools still answer and edits are told it's busy.
 func _pump() -> void:
-	while not _queue.is_empty():
-		if not _active.is_empty() and not _active.long:
-			return
-		var msg: Dictionary = _queue[0]
-		var call := _tool_call(msg)
-		if not _active.is_empty() and call != "" and not tools.can_run_while_rendering(call):
-			_queue.pop_front()
-			var ctx := _context(msg)
-			if not ctx.has("error"):
-				respond(ctx, tools.failure("Studio is making a piece. Wait for it to finish, then try again."))
-			continue
-		if call != "" and tools.waits_for_person(call):
-			if _waiting_since < 0:
-				_waiting_since = Time.get_ticks_msec()
-			if Time.get_ticks_msec() - _waiting_since < PERSON_WAIT_MS:
-				return
-			_queue.pop_front()
-			_waiting_since = -1
-			var waited := _context(msg)
-			if not waited.has("error"):
-				respond(waited, tools.failure("The person has been editing for a while. Try again in a moment."))
-			continue
-		_waiting_since = -1
-		_queue.pop_front()
-		_dispatch(msg)
-
-func _tool_call(msg: Dictionary) -> String:
-	if msg.method != "tools/call" or not msg.get("params") is Dictionary:
-		return ""
-	return str(msg.params.get("name", ""))
+	while not _closed and _active.is_empty() and not _queue.is_empty():
+		_dispatch(_queue.pop_front())
 
 func _context(msg: Dictionary) -> Dictionary:
 	var ctx := {"id": _id_of(msg), "modern": false, "progress_token": null, "progress": -1.0, "cancelled": false}
@@ -241,14 +191,14 @@ func _dispatch(msg: Dictionary) -> void:
 			if not args is Dictionary:
 				respond(ctx, tools.failure("arguments must be an object."))
 				return
-			if relay and (_window_open or name not in WITHOUT_WINDOW):
-				_forward(ctx, msg)
-				return
 			if tools.is_async(name):
-				_active = {"ctx": ctx, "long": tools.is_long(name)}
+				_active = ctx
 				await tools.call_tool(ctx, name, args)
 				_active = {}
-				_pump()
+				if _closed:
+					_finish_disconnect()
+				else:
+					_pump()
 			else:
 				tools.call_tool(ctx, name, args)
 		_:
@@ -276,59 +226,3 @@ func _send_error(id: Variant, code: int, message: String) -> void:
 
 func _send(msg: Dictionary) -> void:
 	write_line.call(JSON.stringify(msg))
-
-func _forward(ctx: Dictionary, msg: Dictionary) -> void:
-	if not _window_open:
-		if not launch_window.call():
-			respond(ctx, tools.failure("Studio couldn't open its window."))
-			return
-		_window_open = true
-		if _legacy_version != "":
-			write_window.call(JSON.stringify({"jsonrpc": "2.0", "id": WINDOW_INIT, "method": "initialize", "params": {"protocolVersion": _legacy_version}}))
-	_forwarded[ctx.id] = ctx
-	msg["id"] = ctx.id
-	write_window.call(JSON.stringify(msg))
-
-func _launch_window() -> bool:
-	var before := [] if OS.has_feature("template") else ["--path", ProjectSettings.globalize_path("res://").trim_suffix("/")]
-	var started := OS.execute_with_pipe(OS.get_executable_path(), before + window_args, true)
-	if started.is_empty():
-		return false
-	_window = started
-	_window_threads = [Thread.new(), Thread.new()]
-	_window_threads[0].start(_read_lines.bind(started.stdio.get_buffer.bind(1), _from_window, _window_closed))
-	_window_threads[1].start(_read_lines.bind(started.stderr.get_buffer.bind(1), func(line: String): printerr(line), func(): pass))
-	return true
-
-func _write_window(line: String) -> void:
-	if _window.is_empty():
-		return
-	_window.stdio.store_line(line)
-	_window.stdio.flush()
-
-func _from_window(line: String) -> void:
-	var msg = JSON.parse_string(line)
-	if not msg is Dictionary:
-		return
-	if msg.has("id") and not msg.has("method"):
-		if msg.id is String and msg.id == WINDOW_INIT:
-			return
-		var id = _id_of(msg)
-		if not _forwarded.has(id):
-			return
-		_forwarded.erase(id)
-	if not _closed:
-		write_line.call(line)
-
-func _window_closed() -> void:
-	_window_open = false
-	for thread in _window_threads:
-		thread.wait_to_finish()
-	_window_threads.clear()
-	_window = {}
-	var waiting := _forwarded.values()
-	_forwarded.clear()
-	for ctx in waiting:
-		respond(ctx, tools.failure("The Studio window was closed. Call the tool again to reopen it."))
-	if _closed:
-		_stdin_closed()

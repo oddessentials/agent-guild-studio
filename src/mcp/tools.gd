@@ -2,7 +2,8 @@ class_name McpTools
 extends RefCounted
 ## The tools an agent gets. Each checks its arguments against its own schema,
 ## then runs Studio as its command line does (Studio.run), with no window:
-## the piece is made, written as a folder and checked.
+## the piece is made, written as a folder, checked, and listed with the
+## pieces the person sees in Studio's window.
 
 const MAKING := ["make_character", "make_companions", "recolor_look", "check_piece"]
 const LOOKS := ["look0", "look1", "look2"]
@@ -27,15 +28,6 @@ func definitions() -> Array:
 func is_async(name: String) -> bool:
 	return name in MAKING
 
-func is_long(_name: String) -> bool:
-	return false
-
-func can_run_while_rendering(name: String) -> bool:
-	return name not in MAKING
-
-func waits_for_person(_name: String) -> bool:
-	return false
-
 func failure(text: String, data: Variant = null) -> Dictionary:
 	var out := {"content": [{"type": "text", "text": text}], "isError": true}
 	if data != null:
@@ -47,10 +39,6 @@ func _done(text: String, data: Variant = null) -> Dictionary:
 	if data != null:
 		out["structuredContent"] = data
 	return out
-
-## A make can't be stopped part way; a cancelled one's answer is never sent.
-func cancel(_ctx: Dictionary) -> void:
-	pass
 
 func call_tool(ctx: Dictionary, name: String, args: Dictionary) -> void:
 	var problem := check(_by_name[name].inputSchema, args, "")
@@ -134,6 +122,10 @@ func _definitions() -> Array:
 	var to := _path("The folder to write the piece in, as a full path. It must not exist yet, or be empty, unless `replace` is true.")
 	var title := {"type": "string", "minLength": 1, "maxLength": 128, "description": "The piece's name, as people see it."}
 	var replace := {"type": "boolean", "description": "Write into a folder that already holds files."}
+	var hue := {"type": "number", "minimum": -360, "maximum": 360, "description": "Degrees to turn its colors' hue."}
+	var tint := _colour("A color laid over it; with `change_color`, the color that one becomes")
+	var change_color := _colour("The one color to change; colors near it change with it")
+	var spread := {"type": "number", "minimum": 0.01, "maximum": 1, "description": "How near a color must be to `change_color` to change, from 0 to 1. Left out, 0.15."}
 	return [
 		{"name": "list_slots", "title": "List slots", "description": "Every slot a piece can be made for, by world: each crew's character and the world's companions, the looks each can be recolored from, and whether the world's art is on this computer yet.",
 			"inputSchema": _object({}, []), "annotations": read},
@@ -141,6 +133,7 @@ func _definitions() -> Array:
 			"inputSchema": _object({"model": _path("The model file, as a full path."), "slot": {"type": "string", "enum": _slots("character")}, "to": to, "title": title,
 				"height": {"type": "number", "minimum": 0.5, "maximum": 5, "description": "How tall it stands, in metres. Left out, it stands as tall as the character it replaces."},
 				"bones": {"type": "string", "minLength": 1, "maxLength": 4096, "description": "Comma-separated choices: pairs like LeftHand=hand_l naming the model's bone for a skeleton bone, `swap` for a rig that names its sides the other way round, `accept` to take Studio's guesses."},
+				"hue": hue, "tint": tint, "change_color": change_color, "spread": spread,
 				"replace": replace}, ["model", "slot", "to"]), "annotations": writes},
 		{"name": "make_companions", "title": "Make companions", "description": "Turns one model, shown four ways, or four models into a world's four companions, then checks them. A humanoid is folded onto the trunk; anything else rides it.",
 			"inputSchema": _object({"models": {"type": "array", "items": _path("A model file, as a full path."), "minItems": 1, "maxItems": 4, "description": "One model or four."},
@@ -148,15 +141,19 @@ func _definitions() -> Array:
 				"move": {"type": "string", "enum": ["rigid", "soft"], "description": "How a model that isn't a humanoid moves with the trunk."},
 				"variants": {"type": "string", "enum": ["tint", "turn"], "description": "How one model is shown four ways."},
 				"turn": {"type": "number", "minimum": -180, "maximum": 180, "description": "Degrees to turn a model that doesn't face forward."},
+				"hue": hue, "tint": tint, "change_color": change_color, "spread": spread,
 				"replace": replace}, ["models", "slot", "to"]), "annotations": writes},
 		{"name": "recolor_look", "title": "Recolor a look", "description": "Recolors one of a slot's own looks into a piece: the mesh and clips stay the world's, only the base colors change. A character slot has look0, look1 and look2; a companion slot has agent and shell. Give `hue`, `tint`, or both; with `change_color` only colors near it change.",
 			"inputSchema": _object({"slot": {"type": "string", "enum": _slots("character") + _slots("companion")}, "look": {"type": "string", "enum": LOOKS + HELPERS}, "to": to, "title": title,
-				"hue": {"type": "number", "minimum": -360, "maximum": 360, "description": "Degrees to turn the hue."},
-				"tint": _colour("A color laid over it"), "change_color": _colour("The one color to change"),
-				"spread": {"type": "number", "minimum": 0.01, "maximum": 1, "description": "How near a color must be to `change_color` to change, from 0 to 1. Left out, 0.15."},
+				"hue": hue, "tint": tint, "change_color": change_color, "spread": spread,
 				"replace": replace}, ["slot", "look", "to"]), "annotations": writes},
 		{"name": "check_piece", "title": "Check a piece", "description": "Checks a piece folder (piece.json and its models) as Studio checks the ones it makes, for the world and slot its piece.json names.",
 			"inputSchema": _object({"folder": _path("The piece's folder, as a full path.")}, ["folder"]), "annotations": read},
+		{"name": "list_pieces", "title": "List pieces", "description": "The pieces made with Studio on this computer, by the person in its window or by an agent: each one's `piece` value, title, slot and the folder it was saved to.",
+			"inputSchema": _object({}, []), "annotations": read},
+		{"name": "remove_piece", "title": "Remove a piece", "description": "Takes a piece off Studio's list. The folder it was saved to is left as it is.",
+			"inputSchema": _object({"piece": {"type": "string", "minLength": 1, "maxLength": 256, "description": "The piece's `piece` value from list_pieces."}}, ["piece"]),
+			"annotations": {"readOnlyHint": false, "destructiveHint": true, "openWorldHint": false}},
 		{"name": "show_window", "title": "Show the window", "description": "Opens the Studio window, so the person can make or edit a piece themselves.",
 			"inputSchema": _object({}, []), "annotations": read},
 	]
@@ -179,7 +176,7 @@ func _tool_make_character(ctx: Dictionary, args: Dictionary) -> Dictionary:
 		options.height = args.height
 	if args.has("bones"):
 		options.map = args.bones
-	return await _make(ctx, args, options)
+	return await _make(ctx, args, options, {"files": [args.model], "options": _kept(options, ["height", "map"])})
 
 func _tool_make_companions(ctx: Dictionary, args: Dictionary) -> Dictionary:
 	if args.models.size() != 1 and args.models.size() != 4:
@@ -188,7 +185,7 @@ func _tool_make_companions(ctx: Dictionary, args: Dictionary) -> Dictionary:
 	for key in ["move", "variants", "turn"]:
 		if args.has(key):
 			options[key] = args[key]
-	return await _make(ctx, args, options)
+	return await _make(ctx, args, options, {"files": args.models, "options": _kept(options, ["move", "variants", "turn"])})
 
 func _tool_recolor_look(ctx: Dictionary, args: Dictionary) -> Dictionary:
 	var companions: bool = String(args.slot).ends_with("/companion")
@@ -196,18 +193,31 @@ func _tool_recolor_look(ctx: Dictionary, args: Dictionary) -> Dictionary:
 		return failure("A character slot is recolored from look0, look1 or look2; a companion slot from agent or shell.")
 	if not args.has("hue") and not args.has("tint"):
 		return failure("Give `hue`, `tint`, or both.")
-	for key in ["tint", "change_color"]:
-		if args.has(key) and not String(args[key]).is_valid_html_color():
-			return failure("`%s` must be a color as #RRGGBB." % key)
-	var options := {"recolour": args.look, "slot": args.slot, "out": args.to}
-	for pair in [["hue", "hue"], ["tint", "tint"], ["change_color", "pick"], ["spread", "spread"]]:
-		if args.has(pair[0]):
-			options[pair[1]] = args[pair[0]]
-	return await _make(ctx, args, options)
+	return await _make(ctx, args, {"recolour": args.look, "slot": args.slot, "out": args.to}, {"recolour": {"which": args.look}})
+
+static func _kept(options: Dictionary, keys: Array) -> Dictionary:
+	var out := {}
+	for key in keys:
+		if options.has(key):
+			out[key] = options[key]
+	return out
 
 ## One Studio run for a slot: its art fetched first, the folder it writes
 ## refused if it holds anything, and what Studio said given back as data.
-func _make(ctx: Dictionary, args: Dictionary, options: Dictionary) -> Dictionary:
+func _make(ctx: Dictionary, args: Dictionary, options: Dictionary, recipe: Dictionary) -> Dictionary:
+	for key in ["tint", "change_color"]:
+		if args.has(key) and not String(args[key]).is_valid_html_color():
+			return failure("`%s` must be a color as #RRGGBB." % key)
+	# The colors as Studio's command line takes them, and as a recipe keeps them.
+	var change := {}
+	for pair in [["hue", "hue"], ["tint", "tint"], ["change_color", "pick"], ["spread", "spread"]]:
+		if args.has(pair[0]):
+			options[pair[1]] = args[pair[0]]
+			change[pair[1]] = args[pair[0]]
+	if recipe.has("recolour"):
+		recipe.recolour.change = change
+	elif change.has("hue") or change.has("tint"):
+		recipe.options.colour = change
 	var to: String = args.to
 	if not to.is_absolute_path():
 		return failure("`to` must be a full path.")
@@ -227,8 +237,17 @@ func _make(ctx: Dictionary, args: Dictionary, options: Dictionary) -> Dictionary
 			return failure("Studio isn't sure of these bones: %s. Call again with `bones`: pairs like LeftHand=<one of the model's bones>, or `swap`, or `accept` to take its guesses." % ", ".join(Studio.said.unsure.keys()),
 				{"unsure": Studio.said.unsure, "model_bones": Studio.said.bones})
 		return failure("Studio couldn't make it: %s." % Studio.said.get("reason", "it failed"))
-	var files := Array(DirAccess.get_files_at(Studio.said.folder))
-	return _done("Made and checked. The piece is in %s." % Studio.said.folder, {"folder": Studio.said.folder, "files": files, "slot": options.slot, "notes": Studio.said.notes})
+	var folder: String = Studio.said.folder
+	var notes: Array = Studio.said.notes
+	var files := Array(DirAccess.get_files_at(folder))
+	var library: PieceLibrary = server.host.pieces
+	library.refresh()
+	var id := await library.add_local(folder, "", recipe)
+	var listed: bool = library.pieces.get(id, {}).get("error", "x") == ""
+	if listed:
+		library.pieces[id].saved = folder
+		library.keep()
+	return _done("Made and checked. The piece is in %s." % folder, {"folder": folder, "files": files, "slot": options.slot, "notes": notes, "piece": id if listed else ""})
 
 ## The world's art, downloaded if it isn't here, then loaded; "" or why not.
 func _art(ctx: Dictionary, world: String) -> String:
@@ -268,6 +287,26 @@ func _tool_check_piece(ctx: Dictionary, args: Dictionary) -> Dictionary:
 	if why != "":
 		return _done("It doesn't pass: %s." % why, {"passes": false, "reason": why, "slot": slot})
 	return _done("It passes, for %s." % slot, {"passes": true, "slot": slot, "title": manifest.get("title", "")})
+
+func _tool_list_pieces(_ctx: Dictionary, _args: Dictionary) -> Dictionary:
+	var library: PieceLibrary = server.host.pieces
+	library.refresh()
+	var out := []
+	for id in library.pieces:
+		var p: Dictionary = library.pieces[id]
+		if p.get("source", "") != "local":
+			continue
+		out.append({"piece": id, "title": p.get("title", ""), "slot": PieceLibrary.slot_of(p) if PieceLibrary.has_slot(p) else "", "folder": p.get("saved", ""), "problem": p.get("error", "")})
+	return _done("%d piece%s." % [out.size(), "" if out.size() == 1 else "s"], {"pieces": out})
+
+func _tool_remove_piece(_ctx: Dictionary, args: Dictionary) -> Dictionary:
+	var library: PieceLibrary = server.host.pieces
+	library.refresh()
+	var piece: Dictionary = library.pieces.get(args.piece, {})
+	if piece.get("source", "") != "local":
+		return failure("There is no piece %s. Use list_pieces for the ones there are." % args.piece)
+	library.remove(args.piece)
+	return _done("%s is off the list. Its saved folder was left as it is." % piece.get("title", args.piece))
 
 func _tool_show_window(_ctx: Dictionary, _args: Dictionary) -> Dictionary:
 	if not server.host.open_window():

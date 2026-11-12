@@ -108,18 +108,16 @@ func open(at_world: String, tools: Dictionary, theme := "light", edit := {}) -> 
 ## no longer where it was, or a piece Studio didn't make, is chosen again.
 func reopen(recipe: Dictionary) -> void:
 	if recipe.has("recolour"):
-		var change: Dictionary = recipe.recolour.change
-		var one: bool = change.has("pick")
-		tints = { "which": recipe.recolour.which, "mode": "one" if one else "all", "hue": 0.0 if one else float(change.get("hue", 0.0)),
-			"over": not one and change.has("tint"), "tint": Color(change.get("tint", "#3060ff")) if not one else Color("#3060ff"),
-			"pick": Color(change.pick) if one else null, "to": Color(change.tint) if one and change.has("tint") else null, "chosen": one and change.has("tint"),
-			"spread": float(change.get("spread", SPREAD)) }
+		tints = _tints_from(recipe.recolour.change, recipe.recolour.which)
 		_show_recolour()
 		return
 	var paths: Array = recipe.get("files", [])
 	if not paths.is_empty() and paths.all(func(f): return FileAccess.file_exists(f)):
 		files = paths.duplicate()
 		options = recipe.get("options", {}).duplicate()
+		if options.has("colour"):
+			options.colour = StudioRecolour.read(options.colour)
+			tints = _tints_from(options.colour, "")
 		_show_bring()
 		_acting = null
 		make_requested.emit({ "where": where, "files": files, "options": options.duplicate() })
@@ -218,8 +216,13 @@ var _last_kind := "character"
 var _last_notes := []
 
 ## The piece in the world: what it does, day or dusk, and what Studio did.
-func show_preview(kind: String, notes: Array, playing := "") -> void:
+## `colors` are a made piece's own main colors, to choose one to change from.
+func show_preview(kind: String, notes: Array, playing := "", colors := []) -> void:
 	motion = playing
+	if recolour.is_empty():
+		_colors = colors
+		if tints.is_empty() or tints.get("which", "") != "":
+			tints = _fresh_tints("")
 	_show_preview(kind, notes)
 
 func show_done(text: String) -> void:
@@ -296,7 +299,7 @@ func _show_recolour() -> void:
 	_to = null
 	_editing_line()
 	if tints.is_empty() or not tints.which in looks:
-		tints = { "which": looks[0], "mode": "all", "hue": 0.0, "over": false, "tint": Color("#3060ff"), "pick": null, "to": null, "chosen": false, "spread": SPREAD }
+		tints = _fresh_tints(looks[0])
 		_colors = []
 	var look_pick := OptionButton.new()
 	for l in looks:
@@ -310,9 +313,30 @@ func _show_recolour() -> void:
 		_fill_swatches()
 		_tint("which", looks[i]))
 	rows.add_child(look_pick)
+	_colour_controls(_show_recolour)
+	_status_line()
+	var buttons := HBoxContainer.new()
+	rows.add_child(buttons)
+	var next := _button("Next", func():
+		recolour = { "which": tints.which, "change": _change() }
+		show_preview(_last_kind, [], motion), buttons)
+	next.theme_type_variation = "Primary"
+	next.disabled = true
+	next.set_meta("waits", true)
+	_button("Back", back, buttons)
+	_footer()
+	if tints.mode == "one":
+		_choose_first()
+		_fill_swatches()
+	_tint("", null)
+
+## The color choices, for a look or for a made piece: all its colors (a hue
+## shift, a tint) or one of them changed to another. `rebuild` shows the
+## screen again when the kind of change is switched.
+func _colour_controls(rebuild: Callable) -> void:
 	_chips("", [["Change all colors", "all"], ["Change one color", "one"]], tints.mode, func(v):
 		tints.mode = v
-		_show_recolour())
+		rebuild.call())
 	if tints.mode == "all":
 		_slider("Hue shift", -180.0, 180.0, tints.hue, 5.0, func(v): _tint("hue", v), func(v): return "%+d°" % v if v != 0.0 else "0°",
 			"Turns its colors around the color wheel; at 0° they stay as made.")
@@ -336,21 +360,32 @@ func _show_recolour() -> void:
 		_to.disabled = not tints.to is Color
 		row.add_child(_to)
 		rows.add_child(row)
-	_status_line()
-	var buttons := HBoxContainer.new()
-	rows.add_child(buttons)
-	var next := _button("Next", func():
-		recolour = { "which": tints.which, "change": _change() }
-		show_preview(_last_kind, [], motion), buttons)
-	next.theme_type_variation = "Primary"
-	next.disabled = true
-	next.set_meta("waits", true)
-	_button("Back", back, buttons)
-	_footer()
-	if tints.mode == "one":
-		_choose_first()
-		_fill_swatches()
-	_tint("", null)
+		_slider("How much counts as that color", 0.05, 0.5, float(tints.get("spread", SPREAD)), 0.01, func(v): _tint("spread", v),
+			func(v): return "%d%%" % roundi(v * 100.0), "Lower changes only colors very like it; higher takes in its shades too.")
+
+static func _fresh_tints(which: String) -> Dictionary:
+	return { "which": which, "mode": "all", "hue": 0.0, "over": false, "tint": Color("#3060ff"), "pick": null, "to": null, "chosen": false, "spread": SPREAD }
+
+## The screen's choices as a saved change (StudioRecolour's) had them.
+static func _tints_from(change: Dictionary, which: String) -> Dictionary:
+	var one: bool = change.has("pick")
+	return { "which": which, "mode": "one" if one else "all", "hue": 0.0 if one else float(change.get("hue", 0.0)),
+		"over": not one and change.has("tint"), "tint": Color(change.get("tint", "#3060ff")) if not one else Color("#3060ff"),
+		"pick": Color(change.pick) if one else null, "to": Color(change.tint) if one and change.has("tint") else null, "chosen": one and change.has("tint"),
+		"spread": float(change.get("spread", SPREAD)) }
+
+## A made piece's colors as the screen now has them, sent on if they changed.
+func _sync_colour() -> void:
+	var change := _change()
+	var now: Dictionary = {} if StudioRecolour.plain(change) else change
+	if now == options.get("colour", {}):
+		return
+	if now.is_empty():
+		options.erase("colour")
+	else:
+		options.colour = now
+	_ready_to_go(false, "Coloring…")
+	adjusted.emit({ "where": where, "files": files, "options": options.duplicate() })
 
 ## A color clearly unlike `c` to change it to: its opposite hue, or for a
 ## gray, the same red every time.
@@ -429,6 +464,9 @@ func _ready_to_go(ready: bool, text: String) -> void:
 func _tint(key: String, value) -> void:
 	if key != "":
 		tints[key] = value
+	if step == "preview":
+		_sync_colour()
+		return
 	_ready_to_go(false, "Recoloring…")
 	recolour_changed.emit({ "where": where, "recolour": { "which": tints.which, "change": _change() } })
 
@@ -487,6 +525,8 @@ func _show_preview(kind: String, notes: Array) -> void:
 	_last_kind = kind
 	_last_notes = notes
 	_clear("See it on the stage")
+	_swatches = null
+	_to = null
 	_chips("What it does", CHARACTER_MOTIONS if kind == "character" else COMPANION_MOTIONS, motion, func(v):
 		motion = v
 		motion_chosen.emit(v))
@@ -499,6 +539,8 @@ func _show_preview(kind: String, notes: Array) -> void:
 		_note("It fits without changes.")
 	if recolour.is_empty():
 		_adjust(kind)
+		_heading("Colors")
+		_colour_controls(func(): _show_preview(_last_kind, _last_notes))
 	_status_line()
 	var buttons := HBoxContainer.new()
 	rows.add_child(buttons)
@@ -507,6 +549,11 @@ func _show_preview(kind: String, notes: Array) -> void:
 	next.set_meta("waits", true)
 	_button("Back", back, buttons)
 	_footer()
+	if recolour.is_empty():
+		if tints.mode == "one":
+			_choose_first()
+			_fill_swatches()
+		_sync_colour()
 
 ## How the piece fits, changed on the stage as it's set.
 func _adjust(kind: String) -> void:

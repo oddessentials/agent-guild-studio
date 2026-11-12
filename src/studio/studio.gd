@@ -7,7 +7,7 @@ class_name Studio
 ## and checking it (a child process the validator waits for frame by frame)
 ## stay on the main thread.
 ##
-##   AgentGuildStudio -- --build=model.glb --slot=guild/openai --out=DIR [--height=2.1] [--title=T] [--map=LeftHand=hand_l,...|swap|accept]
+##   AgentGuildStudio -- --build=model.glb --slot=guild/openai --out=DIR [--height=2.1] [--title=T] [--map=LeftHand=hand_l,...|swap|accept] [--hue=DEGREES] [--tint=#RRGGBB] [--pick=#RRGGBB --spread=0.15]
 ##   AgentGuildStudio -- --build=ghost.glb[,b.glb,c.glb,d.glb] --slot=grove/companion --out=DIR [--move=rigid|soft] [--variants=tint|turn] [--turn=DEGREES]
 ##   AgentGuildStudio -- --recolour=look0|look1|look2|agent|shell --slot=... --out=DIR [--pick=#RRGGBB|U,V] [--spread=0.15] [--hue=DEGREES] [--tint=#RRGGBB]
 
@@ -222,6 +222,14 @@ static func work(where: Dictionary, files: Array, recolour: Dictionary, options:
 		return made
 	out.pieces = made.pieces
 	out.notes = made.notes
+	# The piece's colors changed (`options.colour`, a StudioRecolour change):
+	# `base` keeps it as made, to change them again without making it again.
+	var colour := StudioRecolour.read(options.get("colour", {}))
+	if not StudioRecolour.plain(colour):
+		var most := int(options.get("preview", 0))
+		out.base = made.pieces
+		out.pieces = StudioRecolour.painted(made.pieces, colour, most)
+		out.reduced = most > 0
 	if where.kind == "character":
 		out.default = default
 	return out
@@ -303,6 +311,10 @@ static func run(host: Node, options: Dictionary) -> int:
 			clips[name] = defaults[name].length
 	default.free()
 	StudioFiles.remove_tree(staged.dir)
+	if made.has("pieces") and (options.has("hue") or options.has("tint") or options.has("pick")):
+		if String(options.get("pick", "#")).contains(","):
+			return _fail("--pick takes a color (#RRGGBB) for a model you bring")
+		made.pieces = StudioRecolour.painted(made.pieces, change_from(options, []))
 	if made.has("notes"):
 		made.notes = made.notes + staged.notes
 	if made.has("unsure"):

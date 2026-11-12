@@ -21,6 +21,7 @@ static func run(tree: SceneTree, names: Array) -> int:
 	var errors := ScriptErrors.new()
 	OS.add_logger(errors)
 	for name in names:
+		print("RUN %s" % name)
 		var before := errors.count
 		var script: GDScript = load("res://tests/%s_test.gd" % name)
 		if script == null or not script.can_instantiate():

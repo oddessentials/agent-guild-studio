@@ -201,7 +201,9 @@ func _isolation(tree: SceneTree) -> Array:
 	if frames.child <= 0 or not await TestRunner.until(tree, func(): return not OS.is_process_running(frames.child)):
 		out.append("the hung child was not ended")
 	validator.timeout = 60.0
+	print("EXPECT checker child crash; the parent must report it")
 	verdict = await validator.check(_fixture("character"), "character", CHARACTER_CLIPS, "", "crash")
+	print("END expected checker child crash")
 	if verdict.reason != "it crashed the checker":
 		out.append("a crash was not reported: %s" % verdict.reason)
 	validator.check(_fixture("cycle"), "character", CHARACTER_CLIPS, "load")

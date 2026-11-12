@@ -31,7 +31,7 @@ child.stdout.setEncoding('utf8').on('data', (d) => {
     waiting.get(msg.id)?.(msg);
   }
 });
-const exited = new Promise((resolve) => child.on('exit', (code) => resolve(code)));
+const exited = new Promise((resolve) => child.on('close', (code) => resolve(code)));
 let nextId = 1;
 const request = (method, params, timeoutMs = 60000) => new Promise((resolve, reject) => {
   const id = nextId++;
@@ -51,7 +51,7 @@ try {
   const discover = await request('server/discover', { _meta: meta });
   check(discover.result?.supportedVersions?.includes('2026-07-28'), 'server/discover');
   const list = await request('tools/list', {});
-  check(list.result?.tools?.map((t) => t.name).join() === 'list_slots,make_character,make_companions,recolor_look,check_piece,show_window', 'tools/list has the six tools');
+  check(list.result?.tools?.map((t) => t.name).join() === 'list_slots,make_character,make_companions,recolor_look,check_piece,list_pieces,remove_piece,show_window', 'tools/list has the eight tools');
   child.stdin.write('{not json\n');
   const slots = await tool('list_slots', {});
   check(slots?.structuredContent?.worlds?.length === 6 && slots.structuredContent.worlds.every((w) => w.slots.length === 7), 'list_slots lists six worlds of seven slots');
@@ -71,12 +71,28 @@ try {
     check(passes?.structuredContent?.passes === true && passes.structuredContent.slot === 'gnomeland/openai', 'check_piece passes the piece it made');
     const recolored = await tool('recolor_look', { slot: 'gnomeland/companion', look: 'agent', to: path.join(appData, 'recolored'), hue: 90 }, 300000);
     check(recolored?.isError === false && fs.existsSync(path.join(appData, 'recolored', 'companion_3.glb')), 'recolor_look writes four companions');
+    const colored = await tool('make_character', { model: process.env.STUDIO_SMOKE_MODEL, slot: 'gnomeland/openai', to: path.join(appData, 'colored'), title: 'Colored', hue: 120, tint: '#d04040' }, 300000);
+    check(colored?.isError === false && fs.statSync(path.join(appData, 'colored', 'character.glb')).size !== fs.statSync(path.join(to, 'character.glb')).size, 'make_character changes the colors of a model brought to it');
+    const listed = (await tool('list_pieces', {}))?.structuredContent?.pieces ?? [];
+    check(listed.length === 3 && listed.some((p) => p.piece === made.structuredContent.piece && p.title === 'Smoke' && p.slot === 'gnomeland/openai' && p.folder === to), `list_pieces lists the three pieces made (${listed.map((p) => p.title)})`);
+    const removed = await tool('remove_piece', { piece: made.structuredContent.piece });
+    const left = (await tool('list_pieces', {}))?.structuredContent?.pieces ?? [];
+    check(removed?.isError === false && left.length === 2 && fs.existsSync(path.join(to, 'character.glb')), 'remove_piece takes one piece off the list and leaves its folder');
   }
   check(lines.every((l) => { try { return typeof JSON.parse(l) === 'object'; } catch { return false; } }), 'stdout carries only JSON');
   check(lines.some((l) => l.includes('"code":-32700')), 'a malformed line gets a parse error');
+  child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: nextId++, method: 'tools/call', params: { name: 'list_slots', arguments: {} } }) + '\n');
   child.stdin.end();
-  const code = await Promise.race([exited, new Promise((r) => setTimeout(() => r('timeout'), 60000))]);
-  check(code === 0, `exits cleanly when stdin closes (exit ${code})`);
+  let exitTimer;
+  const code = await Promise.race([exited, new Promise((r) => { exitTimer = setTimeout(() => r('timeout'), 60000); })]);
+  clearTimeout(exitTimer);
+  check(code === 0, `exits cleanly when stdin closes with a call in flight (exit ${code})`);
+  check(!/Pipe must be opened|Parse JSON failed/.test(stderr), 'stdin closes without pipe or parser errors');
+  check(lines.every((l) => { try { return typeof JSON.parse(l) === 'object'; } catch { return false; } }), 'stdout stays JSON through shutdown');
+  if (code === 'timeout') {
+    child.kill();
+    await exited;
+  }
 } catch (e) {
   check(false, e.message);
   child.kill();

@@ -82,12 +82,25 @@ jobs:
         run: |
           & $env:GODOT --headless --path . --editor --import --quit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Contract, Studio, pieces and the art download
+      - name: Contract, Studio, pieces, colors, the shared list and the agent's tools
+        timeout-minutes: 10
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces connect recolour shared_pieces mcp
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
+      - name: Downloads and window cancellation with Windows curl
+        timeout-minutes: 3
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- download window
+          if ($LASTEXITCODE -ne 0) { throw 'The curl download suites failed.' }
+      - name: Downloads and cancellation with Godot's HTTP client
+        timeout-minutes: 3
+        env:
+          STUDIO_TEST_CURL: '0'
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- download window
+          if ($LASTEXITCODE -ne 0) { throw 'The HTTP download suites failed.' }
       - name: Every piece the suites made passes Agent Guild's own check
         run: |
           node tools/check_with_agent_guild.mjs build/pieces .agent-guild
@@ -101,10 +114,10 @@ jobs:
       - name: Run the packaged app
         run: ./tests/package_smoke.ps1 -Zip build/AgentGuildStudio-windows.zip -Dir .smoke
       - id: zip
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         run: Add-Content $env:GITHUB_OUTPUT "sha256=$((Get-FileHash build/AgentGuildStudio-windows.zip).Hash.ToLower())"
       - uses: actions/upload-artifact@v4
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         with:
           name: windows-zip
           path: build/AgentGuildStudio-windows.zip
@@ -112,7 +125,7 @@ jobs:
           retention-days: 7
 
   sign-windows:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: windows-latest
     timeout-minutes: 30
@@ -144,6 +157,16 @@ jobs:
           $zip = "$env:RUNNER_TEMP/unsigned/AgentGuildStudio-windows.zip"
           if (-not $env:BUILT -or (Get-FileHash $zip).Hash.ToLower() -ne $env:BUILT) { throw 'The Windows zip is not the one the build made.' }
           Expand-Archive -LiteralPath $zip -DestinationPath "$env:RUNNER_TEMP/stage"
+      - name: Check signing configuration
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          WINDOWS_PUBLISHER: ${{ vars.WINDOWS_PUBLISHER }}
+        run: |
+          foreach ($name in 'AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID', 'WINDOWS_PUBLISHER') {
+            if (-not [Environment]::GetEnvironmentVariable($name)) { throw "The release-signing environment has no $name variable." }
+          }
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -166,7 +189,6 @@ jobs:
         env:
           PUBLISHER: ${{ vars.WINDOWS_PUBLISHER }}
         run: |
-          if (-not $env:PUBLISHER) { throw 'The release-signing environment has no WINDOWS_PUBLISHER variable.' }
           $exe = "$env:RUNNER_TEMP/smoke/AgentGuildStudio/AgentGuildStudio.exe"
           $signature = Get-AuthenticodeSignature -LiteralPath $exe
           if ($signature.Status -ne 'Valid' -or -not $signature.TimeStamperCertificate -or $signature.SignerCertificate.Subject -ne $env:PUBLISHER) {
@@ -231,12 +253,18 @@ jobs:
         run: |
           & $env:GODOT --headless --path . --editor --import --quit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Contract, Studio, pieces and the art download
+      - name: Contract, Studio, pieces, colors, the shared list and the agent's tools
+        timeout-minutes: 10
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces connect recolour shared_pieces mcp
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
+      - name: Downloads and window cancellation with Godot's HTTP client
+        timeout-minutes: 3
+        run: |
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- download window
+          if ($LASTEXITCODE -ne 0) { throw 'The HTTP download suites failed.' }
       - name: Every piece the suites made passes Agent Guild's own check
         run: |
           node tools/check_with_agent_guild.mjs build/pieces .agent-guild
@@ -264,10 +292,10 @@ jobs:
         shell: bash
         run: tests/macos_signature.sh .smoke/AgentGuildStudio.app
       - id: zip
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         run: Add-Content $env:GITHUB_OUTPUT "sha256=$((Get-FileHash build/AgentGuildStudio-macos.zip).Hash.ToLower())"
       - uses: actions/upload-artifact@v4
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         with:
           name: macos-zip
           path: build/AgentGuildStudio-macos.zip
@@ -275,7 +303,7 @@ jobs:
           retention-days: 7
 
   sign-macos:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-macos
     runs-on: macos-latest
     timeout-minutes: 240

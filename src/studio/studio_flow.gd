@@ -8,6 +8,7 @@ extends Node
 ## under way.
 
 signal ended
+signal save_failed
 
 var panel: StudioPanel
 var pieces: PieceLibrary
@@ -139,9 +140,10 @@ func _make(spec: Dictionary) -> void:
 				return {}
 			return await StudioSource.stage(pieces.validator, files))
 
-## The player changed how the piece fits. A character's height shows at
-## once, its exact fit made only when it's saved; companions, quick to make,
-## turn at once and are made again as set, the newest change only.
+## The player changed how the piece fits or its colors. A character's height
+## shows at once, its exact fit made only when it's saved, and its colors are
+## changed on the piece as made; companions, quick to make, turn at once and
+## are made again as set, the newest change only.
 func _adjusted(spec: Dictionary) -> void:
 	if _made.is_empty() or not _made.has("pieces"):
 		return
@@ -153,6 +155,9 @@ func _adjusted(spec: Dictionary) -> void:
 	if spec.where.kind == "character":
 		_made.want = spec.options
 		stage.resize(float(spec.options.get("height_share", 1.0)) / float(built.get("height_share", 1.0)))
+		if spec.options.get("colour", {}) != _made.get("colour", built.get("colour", {})):
+			spec.repaint = true
+			_recolour_changed(spec)
 		return
 	stage.turn(float(spec.options.get("turn", 0.0)) - float(built.get("turn", 0.0)))
 	_recolour_changed(spec)
@@ -179,6 +184,9 @@ func _run_recolour() -> void:
 	_asked = _wanted
 	var spec := _recolour
 	var asked := _asked
+	if spec.get("repaint", false):
+		_repaint(spec, asked)
+		return
 	var staged: Dictionary = _made.get("staged", {}) if not spec.get("files", []).is_empty() else {}
 	job.run(get_tree(), func() -> Dictionary:
 		var out := Studio.work(spec.where, staged.get("paths", []), spec.get("recolour", {}), spec.get("options", { "preview": PREVIEW_SIDE }))
@@ -186,6 +194,25 @@ func _run_recolour() -> void:
 		out.spec = spec
 		if not staged.is_empty():
 			out.staged = staged
+		return out)
+
+## The made character in the colors now set, from the piece as made; shown
+## smaller than it's saved.
+func _repaint(spec: Dictionary, asked: int) -> void:
+	var made := _made
+	var base: Array = made.get("base", made.pieces)
+	var colour := StudioRecolour.read(spec.options.get("colour", {}))
+	var built: Dictionary = made.spec.options.duplicate()
+	if spec.options.has("colour"):
+		built.colour = spec.options.colour
+	else:
+		built.erase("colour")
+	job.run(get_tree(), func() -> Dictionary:
+		var out := { "where": spec.where, "notes": made.get("notes", []), "base": base, "pieces": StudioRecolour.painted(base, colour, PREVIEW_SIDE),
+			"default": Studio.default_model(spec.where), "asked": asked, "spec": { "where": spec.where, "files": spec.files, "options": built },
+			"want": spec.options, "colour": spec.options.get("colour", {}), "reduced": not StudioRecolour.plain(colour), "colors": made.get("colors", []) }
+		if made.has("staged"):
+			out.staged = made.staged
 		return out)
 
 ## Back on the main thread: show what was made, or say why not. A recolour
@@ -227,6 +254,8 @@ func _made_one(result: Dictionary) -> void:
 	else:
 		shown = [result.host] + result.pieces.map(func(p): return StudioExport.scene(p, "companion"))
 		result.erase("host")
+	if result.has("pieces") and not result.has("colors"):
+		result.colors = _colors_of(result, shown)
 	stage.show_models(shown, result.where.kind)
 	if result.has("asked"):
 		stage.play(stage.motion if stage.motion != "" else "work" if result.where.kind == "character" else "idle")
@@ -236,7 +265,19 @@ func _made_one(result: Dictionary) -> void:
 			panel.adjusted_shown()
 		return
 	stage.play("work" if result.where.kind == "character" else "idle")
-	panel.show_preview(result.where.kind, result.get("notes", []), stage.motion)
+	panel.show_preview(result.where.kind, result.get("notes", []), stage.motion, result.get("colors", []))
+
+## The made piece's own main colors, as made: read from what's about to be
+## shown, or, with its colors already changed, from the piece before that.
+func _colors_of(result: Dictionary, shown: Array) -> Array:
+	var kind: String = result.where.kind
+	if not result.has("base"):
+		return StudioRecolour.palette(shown.slice(0, 1) if kind == "character" else shown.slice(1), PREVIEW_SIDE)
+	var models: Array = result.base.map(func(p): return StudioExport.scene(p, kind))
+	var colors := StudioRecolour.palette(models, PREVIEW_SIDE)
+	for m in models:
+		m.free()
+	return colors
 
 ## The made piece as it's saved: a recolor previewed smaller, made again at
 ## full size; a character resized on the stage, fitted at that height. ""
@@ -245,6 +286,15 @@ func _exact() -> String:
 	if _made.has("want") and _made.want != _made.spec.options:
 		return await _refit()
 	if not _made.get("reduced", false):
+		return ""
+	if _made.has("base"):
+		_working("Coloring it at full size…")
+		var base: Array = _made.base
+		var colour := StudioRecolour.read(_made.spec.options.get("colour", {}))
+		job.run(get_tree(), func() -> Dictionary: return { "exact": true, "pieces": StudioRecolour.painted(base, colour) })
+		var whole: Dictionary = await job.finished
+		_made.pieces = whole.pieces
+		_made.reduced = false
 		return ""
 	_working("Recoloring it at full size…")
 	var spec: Dictionary = _made.spec
@@ -280,6 +330,11 @@ func _refit() -> String:
 	_made.notes = fitted.notes
 	_made.spec = spec
 	_made.erase("want")
+	_made.erase("base")
+	if fitted.has("base"):
+		_made.base = fitted.base
+	_made.reduced = false
+	_made.colour = spec.options.get("colour", {})
 	if active:
 		stage.show_models([StudioExport.scene(fitted.pieces[0], "character"), fitted.default], "character")
 		stage.play(stage.motion)
@@ -311,7 +366,10 @@ func _recipe() -> Dictionary:
 				change[key] = "#" + change[key].to_html(false)
 		return { "recolour": { "which": spec.recolour.which, "change": change } }
 	if not spec.get("files", []).is_empty():
-		return { "files": spec.files, "options": spec.options }
+		var options: Dictionary = spec.options.duplicate()
+		if options.has("colour"):
+			options.colour = StudioRecolour.written(options.colour)
+		return { "files": spec.files, "options": options }
 	return {}
 
 ## Saves the made piece's folder in `parent`, named for its title, never over
@@ -347,7 +405,7 @@ func _save(parent: String, title: String) -> void:
 		StudioFiles.remove_tree(part)
 		_kept("It could not be saved: %s. Nothing was left in %s." % [reason, parent], true)
 		return
-	var id := editing if editing != "" else "local:studio-%d" % int(Time.get_unix_time_from_system() * 1000)
+	var id := editing if editing != "" else PieceLibrary.local_id()
 	var listed := await pieces.add_local(folder, id, _recipe())
 	if pieces.pieces.get(listed, {}).get("error", "x") == "":
 		pieces.pieces[listed].saved = folder
@@ -364,6 +422,8 @@ func _kept(text: String, failed := false) -> void:
 	_leaving = false
 	if active:
 		panel.show_done(text)
+	if failed:
+		save_failed.emit()
 	if leave:
 		finish()
 		return

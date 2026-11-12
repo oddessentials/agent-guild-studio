@@ -9,6 +9,7 @@ signal changed
 signal finished(reason: String)
 
 var running := false
+var with_curl := OS.get_name() == "Windows"
 ## Bytes received of `total`, across every pack asked for.
 var received := 0
 var total := 0
@@ -17,6 +18,9 @@ var _done := 0
 var _http: HTTPRequest
 var _curl := {}
 var _checking := -1
+var _ending := false
+var _end_reason := ""
+var _end_deadline := 0
 
 func start(packs: Array) -> void:
 	if running:
@@ -49,7 +53,7 @@ func _next() -> void:
 		return
 	var url := StudioArt.url(_packs[0])
 	DirAccess.remove_absolute(_part())
-	if OS.get_name() == "Windows":
+	if with_curl:
 		var curl := OS.get_environment("SystemRoot").path_join("System32/curl.exe")
 		if not FileAccess.file_exists(curl):
 			_end("Windows' curl.exe, part of Windows 10 version 1803 and later, is missing")
@@ -60,9 +64,11 @@ func _next() -> void:
 		return
 	if _http == null:
 		_http = HTTPRequest.new()
-		_http.use_threads = true
+		# Threaded HTTP uses blocking reads. Cancelling then joins that thread,
+		# which can freeze the window indefinitely when a server stops replying.
+		_http.use_threads = false
 		_http.request_completed.connect(func(result: int, code: int, _headers, _body):
-			if running and _checking == -1:
+			if running and not _ending and _checking == -1:
 				_downloaded(result == HTTPRequest.RESULT_SUCCESS and code == 200, "HTTP %d" % code if result == HTTPRequest.RESULT_SUCCESS else "network error %d" % result))
 		add_child(_http)
 	_http.download_file = _part()
@@ -71,6 +77,9 @@ func _next() -> void:
 
 func _process(_dt: float) -> void:
 	if not running:
+		return
+	if _ending:
+		_finish_end()
 		return
 	if _checking != -1:
 		if WorkerThreadPool.is_task_completed(_checking):
@@ -115,6 +124,11 @@ func _checked() -> void:
 	_next()
 
 func _end(reason: String) -> void:
+	if _ending:
+		return
+	_ending = true
+	_end_reason = reason
+	_end_deadline = Time.get_ticks_msec() + 2000
 	if not _curl.is_empty():
 		OS.kill(_curl.pid)
 		_curl = {}
@@ -123,12 +137,23 @@ func _end(reason: String) -> void:
 	if _checking != -1:
 		WorkerThreadPool.wait_for_task_completion(_checking)
 		_checking = -1
+	_finish_end()
+
+func _finish_end() -> void:
 	if not _packs.is_empty():
-		DirAccess.remove_absolute(_part())
+		var part := _part()
+		if FileAccess.file_exists(part) and DirAccess.remove_absolute(part) != OK:
+			if Time.get_ticks_msec() < _end_deadline:
+				return
+			_end_reason += "; could not remove %s" % part
 	running = false
 	_packs = []
-	finished.emit(reason)
+	_ending = false
+	finished.emit(_end_reason)
 
 func _exit_tree() -> void:
 	if running:
 		_end("Studio closed")
+		while _ending:
+			OS.delay_msec(1)
+			_finish_end()

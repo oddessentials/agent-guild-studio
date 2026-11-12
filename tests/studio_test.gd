@@ -915,11 +915,5 @@ func _copy(name: String, extension := "glb") -> String:
 	return path
 
 func _empty(dir: String) -> void:
-	var abs := ProjectSettings.globalize_path(dir)
-	if not DirAccess.dir_exists_absolute(abs):
-		return
-	for sub in DirAccess.get_directories_at(abs):
-		_empty(dir.path_join(sub))
-	for file in DirAccess.get_files_at(abs):
-		DirAccess.remove_absolute(abs.path_join(file))
-	DirAccess.remove_absolute(abs)
+	StudioFiles.remove_tree(ProjectSettings.globalize_path(dir))
+	check(not DirAccess.dir_exists_absolute(dir), "test cleanup left %s behind" % dir)
