@@ -126,9 +126,14 @@ func _window_processes(tree: SceneTree, main: Node, out: String) -> void:
 	check(await TestRunner.until(tree, func(): return main._window_pids.is_empty()), "closed window processes were not collected")
 	check(pids.all(func(pid): return OS.get_process_exit_code(pid) == 0), "a window process exit code was lost")
 	var asked := OS.execute_with_pipe(OS.get_executable_path(), main.window_args() + ["--headless", "--no-header", "--", "--version"], false)
-	check(not asked.is_empty() and await TestRunner.until(tree, func(): return not OS.is_process_running(asked.pid)), "Studio did not answer --version")
+	# On Windows the child does not end until its output has been read.
+	var said_version := [""]
+	var answered := func():
+		said_version[0] += asked.stdio.get_buffer(4096).get_string_from_utf8()
+		return not OS.is_process_running(asked.pid)
+	check(not asked.is_empty() and await TestRunner.until(tree, answered), "Studio did not answer --version")
 	if not asked.is_empty():
-		var version: String = asked.stdio.get_buffer(4096).get_string_from_utf8().strip_edges()
+		var version: String = (said_version[0] + asked.stdio.get_buffer(4096).get_string_from_utf8()).strip_edges()
 		check(OS.get_process_exit_code(asked.pid) == 0 and version == "dev", "--version says %s, not dev" % version)
 	if OS.get_name() != "Windows":
 		var writer := out.path_join("Bill's $cash `tools`.gd")
