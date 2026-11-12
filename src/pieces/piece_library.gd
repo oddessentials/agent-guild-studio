@@ -22,6 +22,8 @@ var root := ROOT
 var _scenes := {}
 var _loading := {}
 var _adding := {}
+var _written := {}
+const RECORDS := "records"
 signal _settled(id: String)
 
 func _ready() -> void:
@@ -261,21 +263,69 @@ func _settle(piece: Dictionary) -> void:
 func keep() -> void:
 	_save()
 
+## Each piece's record is a file of its own under records/, written whole
+## and then moved into place, so Studio's window and an agent's connection,
+## two programs with one list, never write over each other's pieces.
 func _save() -> void:
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(root))
-	var file := FileAccess.open(root.path_join("index.json"), FileAccess.WRITE)
-	if file:
-		file.store_string(StrictJson.stringify(pieces, " "))
+	var dir := ProjectSettings.globalize_path(root.path_join(RECORDS))
+	DirAccess.make_dir_recursive_absolute(dir)
+	for id in pieces:
+		var text := StrictJson.stringify(pieces[id], " ")
+		if _written.get(id, "") == text:
+			continue
+		var path := dir.path_join(_record(id))
+		var file := FileAccess.open(path + ".part", FileAccess.WRITE)
+		if file == null:
+			continue
+		file.store_string(text)
+		file.close()
+		DirAccess.remove_absolute(path)
+		if DirAccess.rename_absolute(path + ".part", path) == OK:
+			_written[id] = text
+	for id in _written.keys():
+		if not pieces.has(id):
+			DirAccess.remove_absolute(dir.path_join(_record(id)))
+			_written.erase(id)
+
+static func _record(id: String) -> String:
+	return id.validate_filename() + ".json"
+
+## Every record on disk: { id: piece } and { id: its text }.
+func _read() -> Array:
+	var dir := ProjectSettings.globalize_path(root.path_join(RECORDS))
+	var found := {}
+	var texts := {}
+	for name in DirAccess.get_files_at(dir) if DirAccess.dir_exists_absolute(dir) else PackedStringArray():
+		if name.get_extension() != "json":
+			continue
+		var text := FileAccess.get_file_as_string(dir.path_join(name))
+		# A record another program is part way through writing isn't one yet.
+		var json := JSON.new()
+		var piece = json.data if text != "" and json.parse(text) == OK else null
+		if piece is Dictionary and piece.get("id") is String and piece.has("kind") and (piece.get("dir", "") == "" or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(piece.dir))):
+			found[piece.id] = piece
+			texts[piece.id] = text
+	return [found, texts]
 
 func _restore() -> void:
-	var text := FileAccess.get_file_as_string(root.path_join("index.json"))
-	var saved = JSON.parse_string(text) if text != "" else null
-	if not saved is Dictionary:
+	var read := _read()
+	pieces = read[0]
+	_written = read[1]
+
+## Takes in what another program changed: pieces it added, changed or
+## removed. Nothing is read while a piece is being added here.
+func refresh() -> void:
+	if not _adding.is_empty():
 		return
-	for id in saved:
-		var piece = saved[id]
-		if piece is Dictionary and piece.has("kind") and (piece.get("dir", "") == "" or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(piece.dir))):
-			pieces[id] = piece
+	var read := _read()
+	if read[1] == _written:
+		return
+	for id in pieces.keys():
+		if not read[0].has(id):
+			_scenes.erase(id)
+	pieces = read[0]
+	_written = read[1]
+	changed.emit()
 
 func _remove_dir(dir: String) -> void:
 	var abs := ProjectSettings.globalize_path(dir)

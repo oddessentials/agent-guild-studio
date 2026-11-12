@@ -1,14 +1,16 @@
 class_name StudioRecolour
-## Recolours one of the game's own looks into a piece: a character's look
-## for its slot, or a world's set of four helpers for its companions. Only
-## the base colour textures change; the mesh and clips are the shipped ones,
-## untouched, so the piece walks and works exactly as the look does.
+## Changes a piece's colours: a piece made from a model (painted), or one of
+## a world's own looks, a character's for its slot or a set of four helpers
+## for its companions (dress). Every colour a material shows by changes, its
+## base colour and its glow, as a value and as a texture; the mesh and clips
+## are untouched.
 ##
 ## A change is { pick, spread, hue, tint }: the colour to change (`pick`, a
 ## Color; none for all of it) and how near a colour must be to count
 ## (`spread`, 0 to 1), then its hue turned (`hue`, degrees) and/or a colour
 ## laid over it (`tint`). Pixels near the pick change fully, fading out
-## towards the spread's edge.
+## towards the spread's edge. With a pick and a tint, the picked colour
+## becomes the tint, brightness and all, and its shading follows.
 ##
 ## Threads: recolour() works on Images and runs anywhere; dress() swaps
 ## textures on a model outside the tree.
@@ -59,11 +61,11 @@ static func models(where: Dictionary, which: String) -> Dictionary:
 static func _look_name(base: String, which: String) -> String:
 	return base if which == "look0" else "%s_%s" % [base, which]
 
-## The model's base color textures recolored, on its own copies of its
-## materials (the shipped ones are the world's too), and every texture it
-## has made plain (decompressed) so the glTF writer can take it. Outside the
-## tree. With `most`, for a preview: only the base colors, at most that many
-## pixels a side.
+## The model's colors changed, on its own copies of its materials (the
+## shipped ones are the world's too), and every texture it has made plain
+## (decompressed) so the glTF writer can take it. Outside the tree. With
+## `most`, for a preview: only the textures that show color, at most that
+## many pixels a side.
 static func dress(model: Node, change: Dictionary, most := 0) -> void:
 	var done := {}
 	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
@@ -76,17 +78,80 @@ static func dress(model: Node, change: Dictionary, most := 0) -> void:
 				_dress(done[material], change, most)
 			mi.set_surface_override_material(s, done[material])
 
+const COLORED := ["albedo_texture", "emission_texture"]
+
 static func _dress(material: BaseMaterial3D, change: Dictionary, most: int) -> void:
+	material.albedo_color = _keep_alpha(changed(material.albedo_color, change), material.albedo_color)
+	if material.emission_enabled:
+		material.emission = changed(material.emission, change)
 	for slot in ["albedo_texture", "normal_texture", "roughness_texture", "metallic_texture", "ao_texture", "emission_texture", "orm_texture"]:
-		if not slot in material or (most > 0 and slot != "albedo_texture"):
+		if not slot in material or (most > 0 and not slot in COLORED):
 			continue
 		var texture: Texture2D = material.get(slot)
 		var image := _plain(texture, most) if texture else null
 		if image == null:
 			continue
-		if slot == "albedo_texture":
+		if slot in COLORED:
 			image = recolour(image, change, PREVIEW_BITS if most > 0 else BITS)
 		material.set(slot, ImageTexture.create_from_image(image))
+
+static func _keep_alpha(c: Color, from: Color) -> Color:
+	return Color(c.r, c.g, c.b, from.a)
+
+## A change as read back from a recipe or a tool's words: its colors, kept
+## there as #RRGGBB, as colors.
+static func read(change: Dictionary) -> Dictionary:
+	var out := change.duplicate()
+	for key in ["pick", "tint"]:
+		if out.get(key) is String:
+			out[key] = Color(out[key])
+	return out
+
+## A change as a recipe keeps it: its colors as #RRGGBB.
+static func written(change: Dictionary) -> Dictionary:
+	var out := change.duplicate()
+	for key in ["pick", "tint"]:
+		if out.get(key) is Color:
+			out[key] = "#" + out[key].to_html(false)
+	return out
+
+## Whether the change changes nothing.
+static func plain(change: Dictionary) -> bool:
+	return float(change.get("hue", 0.0)) == 0.0 and not change.get("tint") is Color
+
+## Pieces made from a model (plain data, Studio.make's) with the change made
+## to every surface's color and image; the pieces given are left as they
+## were. With `most`, for a preview: images at most that many pixels a side.
+## Any thread.
+static func painted(pieces: Array, change: Dictionary, most := 0) -> Array:
+	if plain(change):
+		return pieces
+	var images := {}
+	var out := []
+	for piece: Dictionary in pieces:
+		var copy := piece.duplicate()
+		copy.surfaces = []
+		for s: Dictionary in piece.surfaces:
+			var look: Dictionary = s.look.duplicate()
+			look.color = _keep_alpha(changed(look.color, change), look.color)
+			var image: Image = look.get("image")
+			if image:
+				if not images.has(image):
+					var small: Image = image
+					if most > 0 and maxi(image.get_width(), image.get_height()) > most:
+						small = image.duplicate()
+						if small.is_compressed():
+							small.decompress()
+						small.clear_mipmaps()
+						var side := maxi(small.get_width(), small.get_height())
+						small.resize(maxi(1, small.get_width() * most / side), maxi(1, small.get_height() * most / side), Image.INTERPOLATE_BILINEAR)
+					images[image] = recolour(small, change, PREVIEW_BITS if most > 0 else BITS)
+				look.image = images[image]
+			var surface := s.duplicate()
+			surface.look = look
+			copy.surfaces.append(surface)
+		out.append(copy)
+	return out
 
 ## Base colors decompressed and made smaller, kept while Studio is open: a
 ## preview's every change starts from them.
@@ -203,5 +268,12 @@ static func changed(c: Color, change: Dictionary) -> Color:
 		to = Color.from_hsv(fposmod(c.h + hue / 360.0, 1.0), c.s, c.v)
 	if change.get("tint") is Color:
 		var tint: Color = change.tint
-		to = Color.from_hsv(tint.h, lerpf(to.s, tint.s, 0.85), to.v * lerpf(1.0, tint.v, 0.5))
-	return c.lerp(to, share)
+		if change.get("pick") is Color:
+			# The picked color becomes the tint: lighter by their difference,
+			# or darker by their ratio, so its shading keeps its shape.
+			var from: float = change.pick.v
+			var value := to.v + tint.v - from if tint.v >= from else to.v * tint.v / maxf(from, 1e-3)
+			to = Color.from_hsv(tint.h, tint.s, clampf(value, 0.0, 1.0))
+		else:
+			to = Color.from_hsv(tint.h, lerpf(to.s, tint.s, 0.85), to.v * lerpf(1.0, tint.v, 0.5))
+	return Color(c.lerp(to, share), c.a)

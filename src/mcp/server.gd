@@ -14,19 +14,22 @@ const METHOD_NOT_FOUND := -32601
 const INVALID_PARAMS := -32602
 const UNSUPPORTED_VERSION := -32022
 const PERSON_WAIT_MS := 30000
-const WINDOW_INIT := "studio-window-initialize"
+const WINDOW_START := "studio-window-start"
+const WINDOW_RETRY_MS := 10000
+const AGENT_LEFT := "notifications/studio/agent_disconnected"
 const WITHOUT_WINDOW := []
 const INSTRUCTIONS := "Agent Guild: Studio makes characters and companions for Agent Guild from a model file, or by recoloring one of a world's own looks. It works without a window.
 Start with list_slots: a piece is made for one slot, a world's crew such as guild/anthropic, or a world's companions such as guild/companion.
-make_character takes one model (.glb, .gltf or .vrm); make_companions takes one model or four; recolor_look changes a world's own look. Each writes a piece folder at `to` and checks it. A world's art downloads the first time it is needed, which can take a while.
+make_character takes one model (.glb, .gltf or .vrm); make_companions takes one model or four; recolor_look starts from a world's own look. Each can change the piece's colors, writes a piece folder at `to` and checks it. A world's art downloads the first time it is needed, which can take a while.
 When Studio can't be sure of a model's bones, make_character says which, and you call it again with `bones`.
-Use check_piece on any piece folder. show_window opens Studio for the person."
+Pieces made here are listed for the person in Studio's window too: list_pieces, remove_piece. Use check_piece on any piece folder. show_window opens Studio for the person."
 
 var host: Node
 var tools: McpTools
 var read_stdin := true
 var write_line := func(line: String): print(line)
 var relay := false
+var from_relay := false
 var window_args: Array = []
 var launch_window := _launch_window
 var write_window := _write_window
@@ -36,9 +39,13 @@ var _queue: Array = []
 var _active: Dictionary = {}
 var _waiting_since := -1
 var _closed := false
+var _left := false
 var _window := {}
 var _window_open := false
+var _window_starting := false
+var _window_failed_at := -1
 var _window_threads: Array = []
+var _exited_windows: Array = []
 var _forwarded := {}
 
 func _ready() -> void:
@@ -71,9 +78,11 @@ func _stdin_closed() -> void:
 		_thread.wait_to_finish()
 		_thread = null
 	if _window_open:
-		if not _window.is_empty():
-			_window.stdio.close()
+		write_window.call(JSON.stringify({"jsonrpc": "2.0", "method": AGENT_LEFT}))
 		return
+	if _left:
+		return
+	_left = true
 	if host and host.has_method("agent_disconnected"):
 		host.agent_disconnected()
 
@@ -82,6 +91,8 @@ func _exit_tree() -> void:
 		_thread.wait_to_finish()
 
 func _process(_delta: float) -> void:
+	if not _exited_windows.is_empty():
+		_exited_windows = _exited_windows.filter(OS.is_process_running)
 	if not _queue.is_empty():
 		_pump()
 
@@ -126,6 +137,9 @@ static func _id_of(msg: Variant) -> Variant:
 	return null
 
 func _notification_received(msg: Dictionary) -> void:
+	if msg.method == AGENT_LEFT and from_relay:
+		_stdin_closed()
+		return
 	if msg.method != "notifications/cancelled":
 		return
 	var params = msg.get("params", {})
@@ -279,12 +293,20 @@ func _send(msg: Dictionary) -> void:
 
 func _forward(ctx: Dictionary, msg: Dictionary) -> void:
 	if not _window_open:
+		var wait := _window_failed_at + WINDOW_RETRY_MS - Time.get_ticks_msec() if _window_failed_at >= 0 else 0
+		if wait > 0:
+			respond(ctx, tools.failure("Studio's window failed to start. Try again in %d seconds." % ceili(wait / 1000.0)))
+			return
 		if not launch_window.call():
+			_window_failed_at = Time.get_ticks_msec()
 			respond(ctx, tools.failure("Studio couldn't open its window."))
 			return
 		_window_open = true
+		_window_starting = true
 		if _legacy_version != "":
-			write_window.call(JSON.stringify({"jsonrpc": "2.0", "id": WINDOW_INIT, "method": "initialize", "params": {"protocolVersion": _legacy_version}}))
+			write_window.call(JSON.stringify({"jsonrpc": "2.0", "id": WINDOW_START, "method": "initialize", "params": {"protocolVersion": _legacy_version}}))
+		else:
+			write_window.call(JSON.stringify({"jsonrpc": "2.0", "id": WINDOW_START, "method": "ping"}))
 	_forwarded[ctx.id] = ctx
 	msg["id"] = ctx.id
 	write_window.call(JSON.stringify(msg))
@@ -311,7 +333,9 @@ func _from_window(line: String) -> void:
 	if not msg is Dictionary:
 		return
 	if msg.has("id") and not msg.has("method"):
-		if msg.id is String and msg.id == WINDOW_INIT:
+		if _window_starting:
+			_window_starting = false
+			_window_failed_at = -1
 			return
 		var id = _id_of(msg)
 		if not _forwarded.has(id):
@@ -322,13 +346,19 @@ func _from_window(line: String) -> void:
 
 func _window_closed() -> void:
 	_window_open = false
+	var failed := _window_starting
+	_window_starting = false
+	if failed:
+		_window_failed_at = Time.get_ticks_msec()
 	for thread in _window_threads:
 		thread.wait_to_finish()
 	_window_threads.clear()
+	if _window.has("pid") and OS.is_process_running(_window.pid):
+		_exited_windows.append(_window.pid)
 	_window = {}
 	var waiting := _forwarded.values()
 	_forwarded.clear()
 	for ctx in waiting:
-		respond(ctx, tools.failure("The Studio window was closed. Call the tool again to reopen it."))
+		respond(ctx, tools.failure("Studio's window failed to start, so nothing was done." if failed else "The Studio window was closed. Call the tool again to reopen it."))
 	if _closed:
 		_stdin_closed()

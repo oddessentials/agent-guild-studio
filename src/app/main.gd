@@ -31,6 +31,9 @@ var mcp: McpServer
 var _art_reason := ""
 var _section: Texture2D
 var _orbiting := false
+var _closing := false
+## What closing the window ends with; tests name another.
+var on_quit := func(): get_tree().quit()
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -59,6 +62,7 @@ func _ready() -> void:
 		return
 	if options.has("mcp"):
 		Studio.quiet = true
+		_library()
 		mcp = McpServer.new()
 		mcp.host = self
 		add_child(mcp)
@@ -101,15 +105,29 @@ func _fetch(what: String) -> int:
 	print("studio: the art is in %s" % StudioArt.folder())
 	return 0
 
+func _library() -> void:
+	if pieces != null:
+		return
+	pieces = PieceLibrary.new()
+	pieces.default_clips = default_clips
+	add_child(pieces)
+
 ## The window: the stage, with the first screen beside it.
 func _open() -> void:
 	world = options.get("world", world) if YardModel.WORLDS.has(options.get("world", world)) else world
 	theme = "dark" if options.get("theme", "light") == "dark" else "light"
 	get_window().min_size = Vector2i(960, 600)
-	pieces = PieceLibrary.new()
-	pieces.default_clips = default_clips
-	add_child(pieces)
+	get_tree().auto_accept_quit = false
+	_library()
 	pieces.changed.connect(_show_home)
+	# An agent's connection is another program with the same list of pieces.
+	var look := Timer.new()
+	look.wait_time = 2.0
+	look.timeout.connect(func():
+		if flow == null:
+			pieces.refresh())
+	add_child(look)
+	look.start()
 	stage = StudioStage.new()
 	add_child(stage)
 	camera = CameraRig.new()
@@ -256,8 +274,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera.orbit(-event.relative.x * 0.006, 0.0)
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and flow != null and panel.visible:
-		panel.leave_requested.emit()
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and home != null:
+		close()
+
+## The window's close button: a save under way finishes first, so nothing is
+## left half written; a download under way is dropped whole.
+func close() -> void:
+	if _closing:
+		return
+	_closing = true
+	if flow == null:
+		on_quit.call()
+		return
+	flow.ended.connect(func(): on_quit.call(), CONNECT_ONE_SHOT)
+	panel.leave_requested.emit()
 
 func _shot(path: String) -> void:
 	for i in 30:
@@ -273,8 +303,11 @@ func agent_disconnected() -> void:
 
 ## Studio's window, as a program of its own beside an agent's connection.
 func open_window() -> bool:
-	var before := [] if OS.has_feature("template") else ["--path", ProjectSettings.globalize_path("res://").trim_suffix("/")]
-	return OS.create_process(OS.get_executable_path(), before) > 0
+	return OS.create_process(OS.get_executable_path(), window_args()) > 0
+
+## What Studio is started with to open its window: nothing, in the app itself.
+static func window_args() -> Array:
+	return [] if OS.has_feature("template") else ["--path", ProjectSettings.globalize_path("res://").trim_suffix("/")]
 
 ## For PowerShell on Windows, and for Terminal's shell (zsh) elsewhere.
 static func connect_commands(exe: String, before: Array, posix := OS.get_name() != "Windows") -> Array:

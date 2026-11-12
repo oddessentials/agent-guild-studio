@@ -82,11 +82,11 @@ jobs:
         run: |
           & $env:GODOT --headless --path . --editor --import --quit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Contract, Studio, pieces and the art download
+      - name: Contract, Studio, pieces, colors, the shared list, the agent's tools and the window
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect recolour shared_pieces mcp window
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
       - name: Every piece the suites made passes Agent Guild's own check
         run: |
@@ -231,11 +231,11 @@ jobs:
         run: |
           & $env:GODOT --headless --path . --editor --import --quit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Contract, Studio, pieces and the art download
+      - name: Contract, Studio, pieces, colors, the shared list, the agent's tools and the window
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces download connect recolour shared_pieces mcp window
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
       - name: Every piece the suites made passes Agent Guild's own check
         run: |

@@ -6,9 +6,6 @@ extends RefCounted
 const OUT := "user://art-test/"
 
 var failures := []
-var _server := TCPServer.new()
-var _serving := {}
-var _peers := []
 
 func check(ok: bool, what: String) -> void:
 	if not ok:
@@ -17,37 +14,27 @@ func check(ok: bool, what: String) -> void:
 func run(tree: SceneTree) -> Array:
 	var folder := ProjectSettings.globalize_path(OUT)
 	StudioFiles.remove_tree(folder)
-	OS.set_environment("STUDIO_ART", folder)
-	var port := 0
-	for candidate in range(47810, 47830):
-		if _server.listen(candidate, "127.0.0.1") == OK:
-			port = candidate
-			break
-	if port == 0:
+	var server := LocalServer.new()
+	if not server.start():
 		return ["no port on this computer was free for the test's server"]
-	OS.set_environment("STUDIO_ART_URL", "http://127.0.0.1:%d/%%s/%%s" % port)
-	var good := PackedByteArray()
-	good.resize(300000)
-	for i in good.size():
-		good[i] = i % 251
-	var sum := HashingContext.new()
-	sum.start(HashingContext.HASH_SHA256)
-	sum.update(good)
+	OS.set_environment("STUDIO_ART", folder)
+	OS.set_environment("STUDIO_ART_URL", "http://127.0.0.1:%d/%%s/%%s" % server.port)
+	var good := LocalServer.pack("good.zip", 300000)
 	var kept: Dictionary = StudioArt._lock
 	StudioArt._lock = { "release": "art", "packs": {
-		"good": { "asset": "good.zip", "size": good.size(), "sha256": sum.finish().hex_encode() },
-		"changed": { "asset": "changed.zip", "size": good.size(), "sha256": "00".repeat(32) },
+		"good": good[1],
+		"changed": { "asset": "changed.zip", "size": 300000, "sha256": "00".repeat(32) },
 		"gone": { "asset": "gone.zip", "size": 10, "sha256": "00".repeat(32) } } }
-	_serving = { "/art/good.zip": good, "/art/changed.zip": good }
+	server.serving = { "/art/good.zip": good[0], "/art/changed.zip": good[0] }
 	var download := ArtDownload.new()
 	tree.root.add_child(download)
-	tree.process_frame.connect(_serve)
+	tree.process_frame.connect(server.poll)
 
 	check(StudioArt.missing(["good"]) == ["good"], "a pack not downloaded yet is not counted as missing")
 	download.start(["good"])
 	check(await download.finished == "", "a pack that matches its checksum was not downloaded")
-	check(StudioArt.have("good") and FileAccess.get_file_as_bytes(StudioArt.file("good")) == good, "the downloaded pack is not in place, whole")
-	check(download.received == good.size() and download.total == good.size(), "the download did not count its bytes: %d of %d" % [download.received, download.total])
+	check(StudioArt.have("good") and FileAccess.get_file_as_bytes(StudioArt.file("good")) == good[0], "the downloaded pack is not in place, whole")
+	check(download.received == 300000 and download.total == 300000, "the download did not count its bytes: %d of %d" % [download.received, download.total])
 
 	download.start(["changed"])
 	var why: String = await download.finished
@@ -59,33 +46,11 @@ func run(tree: SceneTree) -> Array:
 	check(why.contains("could not be downloaded"), "a pack the server doesn't have was not refused: %s" % why)
 	check(DirAccess.get_files_at(folder) == PackedStringArray(["good.zip"]), "a failed download left something behind: %s" % [DirAccess.get_files_at(folder)])
 
-	tree.process_frame.disconnect(_serve)
+	tree.process_frame.disconnect(server.poll)
 	download.queue_free()
-	_server.stop()
+	server.stop()
 	StudioArt._lock = kept
 	OS.set_environment("STUDIO_ART", "")
 	OS.set_environment("STUDIO_ART_URL", "")
 	StudioFiles.remove_tree(folder)
 	return failures
-
-## Answers each request once its headers have arrived, then closes.
-func _serve() -> void:
-	while _server.is_connection_available():
-		_peers.append([_server.take_connection(), ""])
-	for entry in _peers.duplicate():
-		var peer: StreamPeerTCP = entry[0]
-		peer.poll()
-		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-			_peers.erase(entry)
-			continue
-		var waiting := peer.get_available_bytes()
-		if waiting > 0:
-			entry[1] += peer.get_data(waiting)[1].get_string_from_utf8()
-		if not String(entry[1]).contains("\r\n\r\n"):
-			continue
-		var path := String(entry[1]).get_slice(" ", 1)
-		var body: PackedByteArray = _serving.get(path, PackedByteArray())
-		var head := "HTTP/1.1 %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % ["200 OK" if _serving.has(path) else "404 Not Found", body.size()]
-		peer.put_data(head.to_utf8_buffer() + body)
-		peer.disconnect_from_host()
-		_peers.erase(entry)
