@@ -181,3 +181,7 @@ Follow step 4 above.
 ## Mac update
 
 Run Mac step 2 again with the same folder. The connection, the downloaded art and the person's pieces are kept. Then start a new session, so the Studio tools load again.
+
+## Use a character in Grove Companion
+
+A character Studio makes can also be the person's desktop spirit in Agent Guild: Grove Companion. Follow Companion's own steps at [oddessentials.github.io/agent-guild-companions](https://oddessentials.github.io/agent-guild-companions/), with the folder `list_pieces` gives for the character. Grove Companion takes characters, not companions.
