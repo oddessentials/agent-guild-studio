@@ -347,7 +347,7 @@ static func run(options: Dictionary) -> int:
 	var watchdog := Thread.new()
 	watchdog.start(_watch.bind(Time.get_ticks_msec() + int(float(options.get("check-timeout", TIMEOUT)) * 1000) + 5000))
 	if options.get("check-fault", "") == "crash":
-		OS.crash("A check fault, for the tests.")
+		OS.kill(OS.get_process_id())
 	var verdict: Dictionary
 	if options.has("check-source"):
 		verdict = StudioSource.check(options["check-source"], options.get("check-dir", ""))

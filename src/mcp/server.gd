@@ -225,4 +225,4 @@ func _send_error(id: Variant, code: int, message: String) -> void:
 	_send({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}})
 
 func _send(msg: Dictionary) -> void:
-	write_line.call(JSON.stringify(msg))
+	write_line.call(StrictJson.stringify(msg))

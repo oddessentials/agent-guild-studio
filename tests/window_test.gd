@@ -121,10 +121,14 @@ func _window_processes(tree: SceneTree, main: Node, out: String) -> void:
 	check(pids.all(func(pid): return OS.get_process_exit_code(pid) == 0), "a window process exit code was lost")
 	if OS.get_name() != "Windows":
 		var writer := out.path_join("Bill's $cash `tools`.gd")
-		FileAccess.open(writer, FileAccess.WRITE).store_string("extends SceneTree\nfunc _initialize():\n\tprint('window stdout')\n\tprinterr('window stderr')\n\tquit(0)\n")
+		var ran := out.path_join("ran")
+		FileAccess.open(writer, FileAccess.WRITE).store_string("extends SceneTree\nfunc _initialize():\n\tFileAccess.open(%s, FileAccess.WRITE).store_string('ran')\n\tprint('window stdout')\n\tprinterr('window stderr')\n\tquit(0)\n" % var_to_str(ran))
 		command = main.window_command(OS.get_executable_path(), ["--headless", "--no-header", "--script", writer])
-		var output := []
-		check(OS.execute(command[0], command[1], output, true) == 0 and "".join(output) == "", "the standalone window wrote to MCP's stdout or stderr")
+		var child := OS.execute_with_pipe(command[0], command[1], false)
+		check(not child.is_empty() and await TestRunner.until(tree, func(): return not OS.is_process_running(child.pid)), "the standalone window did not end")
+		if not child.is_empty():
+			var said: String = child.stdio.get_buffer(4096).get_string_from_utf8() + child.stderr.get_buffer(4096).get_string_from_utf8()
+			check(OS.get_process_exit_code(child.pid) == 0 and FileAccess.file_exists(ran) and said == "", "the standalone window did not run its script, or wrote to MCP's stdout or stderr: %s" % said)
 
 func _folder(name: String) -> String:
 	var dir := ProjectSettings.globalize_path(OUT + "folders/" + name)

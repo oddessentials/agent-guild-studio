@@ -35,7 +35,7 @@ func failure(text: String, data: Variant = null) -> Dictionary:
 	return out
 
 func _done(text: String, data: Variant = null) -> Dictionary:
-	var out := {"content": [{"type": "text", "text": text if data == null else text + "\n" + JSON.stringify(data)}], "isError": false}
+	var out := {"content": [{"type": "text", "text": text if data == null else text + "\n" + StrictJson.stringify(data)}], "isError": false}
 	if data != null:
 		out["structuredContent"] = data
 	return out
@@ -148,7 +148,7 @@ func _definitions() -> Array:
 				"hue": hue, "tint": tint, "change_color": change_color, "spread": spread,
 				"replace": replace}, ["slot", "look", "to"]), "annotations": writes},
 		{"name": "check_piece", "title": "Check a piece", "description": "Checks a piece folder (piece.json and its models) as Studio checks the ones it makes, for the world and slot its piece.json names.",
-			"inputSchema": _object({"folder": _path("The piece's folder, as a full path.")}, ["folder"]), "annotations": read},
+			"inputSchema": _object({"folder": _path("The piece's folder, as a full path.")}, ["folder"]), "annotations": {"readOnlyHint": true, "openWorldHint": true}},
 		{"name": "list_pieces", "title": "List pieces", "description": "The pieces made with Studio on this computer, by the person in its window or by an agent: each one's `piece` value, title, slot and the folder it was saved to.",
 			"inputSchema": _object({}, []), "annotations": read},
 		{"name": "remove_piece", "title": "Remove a piece", "description": "Takes a piece off Studio's list. The folder it was saved to is left as it is.",
@@ -225,6 +225,9 @@ func _make(ctx: Dictionary, args: Dictionary, options: Dictionary, recipe: Dicti
 		return failure("%s is a file, not a folder." % to)
 	if DirAccess.dir_exists_absolute(to) and not args.get("replace", false) and not (DirAccess.get_files_at(to).is_empty() and DirAccess.get_directories_at(to).is_empty()):
 		return failure("%s already holds files. Choose another folder, or set `replace`." % to)
+	var other := StudioExport.other(to)
+	if other != "":
+		return failure("%s holds %s, which a piece folder may not. Choose another folder." % [to, other])
 	if args.has("title"):
 		options.title = args.title
 	var where := Studio.slot(options.slot)
@@ -243,11 +246,12 @@ func _make(ctx: Dictionary, args: Dictionary, options: Dictionary, recipe: Dicti
 	var library: PieceLibrary = server.host.pieces
 	library.refresh()
 	var id := await library.add_local(folder, "", recipe)
-	var listed: bool = library.pieces.get(id, {}).get("error", "x") == ""
-	if listed:
-		library.pieces[id].saved = folder
-		library.keep()
-	return _done("Made and checked. The piece is in %s." % folder, {"folder": folder, "files": files, "slot": options.slot, "notes": notes, "piece": id if listed else ""})
+	var problem: String = library.pieces.get(id, {}).get("error", "it was not listed")
+	if problem != "":
+		return failure("The piece in %s was made, but Studio couldn't list it: %s." % [folder, problem], {"folder": folder, "files": files, "slot": options.slot, "notes": notes, "problem": problem})
+	library.pieces[id].saved = folder
+	library.keep()
+	return _done("Made and checked. The piece is in %s." % folder, {"folder": folder, "files": files, "slot": options.slot, "notes": notes, "piece": id})
 
 ## The world's art, downloaded if it isn't here, then loaded; "" or why not.
 func _art(ctx: Dictionary, world: String) -> String:

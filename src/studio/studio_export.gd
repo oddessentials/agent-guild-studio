@@ -78,6 +78,23 @@ static func write_glb(root: Node, path: String) -> Error:
 	var err := doc.append_from_scene(root, state)
 	return doc.write_to_filesystem(state, path) if err == OK else err
 
+static func names() -> Array:
+	var out: Array = ["piece.json"] + PieceLibrary.PREVIEWS
+	for kind in PieceLibrary.FILES:
+		out += PieceLibrary.FILES[kind]
+	return out
+
+static func other(folder: String) -> String:
+	if not DirAccess.dir_exists_absolute(folder):
+		return ""
+	var dirs := DirAccess.get_directories_at(folder)
+	if not dirs.is_empty():
+		return dirs[0]
+	for file in DirAccess.get_files_at(folder):
+		if not file in names():
+			return file
+	return ""
+
 ## A piece folder Looks takes in: its model (a character's one, or a
 ## companion's four, in order) and piece.json.
 static func save(models: Array, folder: String, manifest: Dictionary) -> String:

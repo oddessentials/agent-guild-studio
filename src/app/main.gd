@@ -8,7 +8,6 @@ extends Node
 ##   --mcp                      serve MCP on stdin and stdout, so an agent can make pieces (with Godot's --headless: no window)
 ##   --world=guild --theme=light|dark   the world and time of day the window opens on
 ##   --shot=FILE.png            save a picture of the window, then quit
-##   --version                  print this build's version, then quit
 
 const TOOLS := { "anthropic": "Claude Code", "openai": "Codex CLI", "google": "Antigravity CLI", "xai": "Grok Build", "docker": "Docker Agent", "shell": "Shell" }
 const GAP := 16.0
@@ -42,10 +41,6 @@ func _ready() -> void:
 			continue
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		options[parts[0]] = parts[1] if parts.size() > 1 else "1"
-	if options.has("version"):
-		print(ProjectSettings.get_setting("application/config/version"))
-		get_tree().quit()
-		return
 	if options.has("check-piece") or options.has("check-source"):
 		get_tree().quit(PieceCheck.run(options))
 		return

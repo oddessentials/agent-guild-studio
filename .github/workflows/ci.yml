@@ -284,8 +284,6 @@ jobs:
           if (-not [IO.Path]::GetExtension($iconFile)) { $iconFile += '.icns' }
           if ((Get-FileHash ".smoke/AgentGuildStudio.app/Contents/Resources/$iconFile").Hash -ne (Get-FileHash brand/icon.icns).Hash) { throw 'The packaged app does not use brand/icon.icns.' }
           $exe = '.smoke/AgentGuildStudio.app/Contents/MacOS/Agent Guild Studio'
-          $version = & $exe --headless --no-header -- --version
-          if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'The packaged app did not start.' }
           node tests/mcp_smoke.mjs $exe
           if ($LASTEXITCODE -ne 0) { throw 'The packaged app did not serve MCP.' }
       - name: Signing checks
@@ -347,10 +345,6 @@ jobs:
         run: |
           ditto -x -k "$RUNNER_TEMP/signed/AgentGuildStudio-macos.zip" "$RUNNER_TEMP/smoke"
           exe="$RUNNER_TEMP/smoke/AgentGuildStudio.app/Contents/MacOS/Agent Guild Studio"
-          if [ -z "$("$exe" --headless --no-header -- --version)" ]; then
-            echo "::error::The signed app did not start."
-            exit 1
-          fi
           node tests/mcp_smoke.mjs "$exe"
       - name: Check the signature
         run: |
