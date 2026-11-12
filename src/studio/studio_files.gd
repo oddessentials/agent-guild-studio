@@ -15,14 +15,27 @@ static func remove_tree(path: String) -> void:
 		dir.remove(name)
 	DirAccess.remove_absolute(path)
 
+## A new, empty folder beside `folder` that only the caller holds, or "".
+static func make_beside(folder: String, kind: String) -> String:
+	var parent := folder.get_base_dir()
+	DirAccess.make_dir_recursive_absolute(parent)
+	for n in range(1, 1000):
+		var path := parent.path_join(".%s.%s%s" % [folder.get_file(), "" if n == 1 else "%d." % n, kind])
+		var err := DirAccess.make_dir_absolute(path)
+		if err == OK:
+			return path
+		if err != ERR_ALREADY_EXISTS:
+			break
+	return ""
+
 ## Moves the files in `part` into `folder`, first setting aside the files
 ## `folder` holds of `names`, which go back if any move fails; "" or why not.
 static func move_in(part: String, folder: String, names: Array) -> String:
-	var previous := folder.get_base_dir().path_join(".%s.previous" % folder.get_file())
+	var previous := make_beside(folder, "previous")
+	if previous == "":
+		return "a folder to work in could not be made in %s" % folder.get_base_dir()
 	var made := not DirAccess.dir_exists_absolute(folder)
-	remove_tree(previous)
 	DirAccess.make_dir_recursive_absolute(folder)
-	DirAccess.make_dir_recursive_absolute(previous)
 	var aside := []
 	var placed := []
 	var reason := ""

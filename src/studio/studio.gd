@@ -333,7 +333,6 @@ static func run(host: Node, options: Dictionary) -> int:
 ## would.
 static func _save(host: Node, where: Dictionary, models: Array, clips: Dictionary, title: String, notes: Array, options: Dictionary) -> int:
 	var folder := ProjectSettings.globalize_path(options.get("out", "user://studio/build")).rstrip("/\\")
-	var part := folder.get_base_dir().path_join(".%s.part" % folder.get_file())
 	var manifest := { "format": 1, "kind": where.kind, "world": where.world, "title": title }
 	if where.kind == "character":
 		manifest.crew = where.crew
@@ -342,8 +341,8 @@ static func _save(host: Node, where: Dictionary, models: Array, clips: Dictionar
 		for model in models:
 			model.free()
 		return _fail("%s holds %s, which a piece may not" % [folder, other])
-	StudioFiles.remove_tree(part)
-	var reason := StudioExport.save(models, part, manifest)
+	var part := StudioFiles.make_beside(folder, "part")
+	var reason := StudioExport.save(models, part, manifest) if part != "" else "a folder to work in could not be made in %s" % folder.get_base_dir()
 	for model in models:
 		model.free()
 	if reason == "":
@@ -360,7 +359,8 @@ static func _save(host: Node, where: Dictionary, models: Array, clips: Dictionar
 		reason = PieceLibrary.check_folder(part).get("reason", "")
 	if reason == "":
 		reason = StudioFiles.move_in(part, folder, StudioExport.names())
-	StudioFiles.remove_tree(part)
+	if part != "":
+		StudioFiles.remove_tree(part)
 	if reason != "":
 		return _fail(reason)
 	said = { "folder": folder, "notes": notes }
