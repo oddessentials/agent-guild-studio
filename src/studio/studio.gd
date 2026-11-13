@@ -27,7 +27,7 @@ static func slot(text: String) -> Dictionary:
 	if parts[1] == "companion":
 		return { "world": parts[0], "kind": "companion", "crew": "" }
 	if not parts[1] in YardModel.PROVIDER_ORDER:
-		return { "reason": "%s is not a crew of Agent Guild: World" % parts[1] }
+		return { "reason": "%s is not an Agent Guild crew" % parts[1] }
 	return { "world": parts[0], "kind": "character", "crew": parts[1] }
 
 ## The slot's default model, as the game shows it, outside the tree.

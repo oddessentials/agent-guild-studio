@@ -1,6 +1,6 @@
 # Set up Agent Guild: Studio
 
-Agent Guild: Studio makes characters and companions for Agent Guild, from a model file or by recoloring one of a world's own looks. It runs on Windows 10 or 11 (64-bit) or macOS 13 or later, and works for you with no window.
+Agent Guild: Studio makes characters and companions for Agent Guild, from a model file or by recoloring one of a world's own looks. They work in a Yard, in Agent Guild: World and in Grove Companion, and can be changed in each. It runs on Windows 10 or 11 (64-bit) or macOS 13 or later, and works for you with no window.
 
 Agent Guild itself: [agentguild.oddessentials.ai/agents](https://agentguild.oddessentials.ai/agents/). Environments for Agent Guild Yards: [oddessentials.github.io/agent-guild-builders](https://oddessentials.github.io/agent-guild-builders/).
 
@@ -182,6 +182,6 @@ Follow step 4 above.
 
 Run Mac step 2 again with the same folder. The connection, the downloaded art and the person's pieces are kept. Then start a new session, so the Studio tools load again.
 
-## Use a character in Agent Guild: Companions
+## Use a character in Grove Companion
 
-A character Studio makes can also be the person's desktop spirit in Agent Guild: Companions. Follow its own steps at [oddessentials.github.io/agent-guild-companions](https://oddessentials.github.io/agent-guild-companions/), with the folder `list_pieces` gives for the character.
+A character Studio makes can also be the person's desktop spirit in Grove Companion. Follow its own steps at [oddessentials.github.io/agent-guild-companions](https://oddessentials.github.io/agent-guild-companions/), with the folder `list_pieces` gives for the character.

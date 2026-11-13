@@ -102,7 +102,7 @@ static func _headers(path: String, kind: String, files: Array) -> String:
 	if not studio:
 		for ext in gltf.get("extensionsRequired", []):
 			if not ext in EXTENSIONS:
-				return "it needs the glTF extension %s, which Agent Guild: World does not support" % ext
+				return "it needs the glTF extension %s, which Agent Guild does not support" % ext
 	var beside := [0]
 	var held: Array[PackedByteArray] = []
 	for buffer in gltf.get("buffers", []):
