@@ -233,9 +233,9 @@ static func check_folder(folder: String) -> Dictionary:
 	if not manifest.get("kind") in FILES:
 		return { "reason": "its piece.json does not say character or companion" }
 	if not YardModel.WORLDS.has(manifest.get("world", "")):
-		return { "reason": "its piece.json names no world of Agent Guild: World" }
+		return { "reason": "its piece.json names no Agent Guild world" }
 	if manifest.kind == "character" and not manifest.get("crew", "") in YardModel.PROVIDER_ORDER:
-		return { "reason": "its piece.json names no crew of Agent Guild: World" }
+		return { "reason": "its piece.json names no Agent Guild crew" }
 	if manifest.has("title") and (not manifest.title is String or manifest.title.length() > 128):
 		return { "reason": "its title is not text of up to 128 characters" }
 	var allowed: Array = FILES[manifest.kind] + ["piece.json"] + PREVIEWS

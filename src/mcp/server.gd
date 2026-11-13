@@ -12,7 +12,7 @@ const INVALID_REQUEST := -32600
 const METHOD_NOT_FOUND := -32601
 const INVALID_PARAMS := -32602
 const UNSUPPORTED_VERSION := -32022
-const INSTRUCTIONS := "Agent Guild: Studio makes characters and companions for Agent Guild from a model file, or by recoloring one of a world's own looks. It works without a window.
+const INSTRUCTIONS := "Agent Guild: Studio makes characters and companions for Agent Guild from a model file, or by recoloring one of a world's own looks. They work in a Yard, in Agent Guild: World and in Grove Companion, and can be changed in each. It works without a window.
 Start with list_slots: a piece is made for one slot, a world's crew such as guild/anthropic, or a world's companions such as guild/companion.
 make_character takes one model (.glb, .gltf or .vrm); make_companions takes one model or four; recolor_look starts from a world's own look. Each can change the piece's colors, writes a piece folder at `to` and checks it. A world's art downloads the first time it is needed, which can take a while.
 When Studio can't be sure of a model's bones, make_character says which, and you call it again with `bones`.
