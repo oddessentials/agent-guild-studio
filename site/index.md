@@ -184,4 +184,4 @@ Run Mac step 2 again with the same folder. The connection, the downloaded art an
 
 ## Use a character in Agent Guild: Companions
 
-A character Studio makes can also be the person's desktop spirit in Agent Guild: Companions. Follow its own steps at [oddessentials.github.io/agent-guild-companions](https://oddessentials.github.io/agent-guild-companions/), with the folder `list_pieces` gives for the character. It takes characters, not companion pieces.
+A character Studio makes can also be the person's desktop spirit in Agent Guild: Companions. Follow its own steps at [oddessentials.github.io/agent-guild-companions](https://oddessentials.github.io/agent-guild-companions/), with the folder `list_pieces` gives for the character.
