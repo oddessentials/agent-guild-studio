@@ -88,7 +88,7 @@ jobs:
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces connect recolour shared_pieces mcp
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces connect recolour shared_pieces mcp ui
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
       - name: Downloads and window cancellation with Windows curl
         timeout-minutes: 3
@@ -267,7 +267,7 @@ jobs:
         env:
           STUDIO_PIECES: ${{ github.workspace }}/build/pieces
         run: |
-          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces connect recolour shared_pieces mcp
+          & $env:GODOT --headless --path . --script res://tests/run.gd -- contract studio pieces connect recolour shared_pieces mcp ui
           if ($LASTEXITCODE -ne 0) { throw 'A suite failed.' }
       - name: Downloads and window cancellation with Godot's HTTP client
         timeout-minutes: 3

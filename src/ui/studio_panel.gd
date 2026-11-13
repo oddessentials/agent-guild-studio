@@ -344,6 +344,7 @@ func _colour_controls(rebuild: Callable) -> void:
 	else:
 		var choose := Label.new()
 		choose.text = "Color to change"
+		choose.theme_type_variation = "Field"
 		rows.add_child(choose)
 		_swatches = HFlowContainer.new()
 		_swatches.add_theme_constant_override("h_separation", 8)
@@ -352,6 +353,7 @@ func _colour_controls(rebuild: Callable) -> void:
 		var row := HBoxContainer.new()
 		var into := Label.new()
 		into.text = "Change it to"
+		into.theme_type_variation = "Strong"
 		into.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(into)
 		_to = _picker(tints.to if tints.to is Color else Color.WHITE, func(c):
@@ -559,6 +561,7 @@ func _show_preview(kind: String, notes: Array) -> void:
 func _adjust(kind: String) -> void:
 	var label := Label.new()
 	label.text = "Adjust"
+	label.theme_type_variation = "Field"
 	rows.add_child(label)
 	if kind == "character":
 		_slider("Height", 0.85, 1.15, float(options.get("height_share", 1.0)), 0.01, func(v): _set_option("height_share", v),
@@ -585,6 +588,7 @@ func _show_finish() -> void:
 	_editing_line()
 	var label := Label.new()
 	label.text = "Title"
+	label.theme_type_variation = "Field"
 	rows.add_child(label)
 	var title := LineEdit.new()
 	title.text = editing.title if not editing.is_empty() else (String(files[0]).get_file().get_basename() if recolour.is_empty() and not files.is_empty() else "%s recolored" % where.name).capitalize()
@@ -717,12 +721,15 @@ func _action(text: String, busy: String, pressed: Callable, into: Container = nu
 	return b
 
 func _choice(label_text: String, items: Array, current: String, picked: Callable) -> void:
-	var row := HBoxContainer.new()
+	var row := VBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
 	var label := Label.new()
 	label.text = label_text
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.theme_type_variation = "Field"
 	row.add_child(label)
 	var pick := OptionButton.new()
+	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pick.clip_text = true
 	for item in items:
 		pick.add_item(item[0])
 	pick.select(maxi(0, items.map(func(i): return i[1]).find(current)))
@@ -757,20 +764,27 @@ func _slider(label_text: String, low: float, high: float, value: float, step_by:
 	var row := HBoxContainer.new()
 	var label := Label.new()
 	label.text = label_text
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.theme_type_variation = "Strong"
 	row.add_child(label)
 	var amount := Label.new()
 	amount.theme_type_variation = "Muted"
+	amount.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	amount.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	amount.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	amount.text = say.call(value)
+	amount.tooltip_text = amount.text
 	row.add_child(amount)
 	var slider := HSlider.new()
 	slider.min_value = low
 	slider.max_value = high
 	slider.step = step_by
 	slider.value = value
+	slider.custom_minimum_size.y = 28
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider.value_changed.connect(func(v):
 		amount.text = say.call(v)
+		amount.tooltip_text = amount.text
 		changed.call(v))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
