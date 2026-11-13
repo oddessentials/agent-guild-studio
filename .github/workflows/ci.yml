@@ -27,6 +27,7 @@ env:
   GODOT_WINDOWS_SHA512: 83decd58fdf67b9d657958a1ae6bf1929c20785315a81effe245874cdc57acb709bf868e00778a96984338c1b29dafdb453c6847747694621c6ecf5da2259993
   GODOT_MACOS_SHA512: 38aa16e5bba2083941fc5b3e54be0089bd4cc35e32415f5b9fd9a8a6a7b9818255d44532ea8ef94b5aef56c4b407c2d634fa4f657e4ebe681ebbf59b7bac69ca
   AGENT_GUILD_COMMIT: 3a3cd721f713068ff78264560e29bf951ff9a37b
+  COMPANIONS_COMMIT: 05dfd1f5c0d64963048c67a826f0758d31b7e83d
 
 jobs:
   build:
@@ -105,6 +106,14 @@ jobs:
         run: |
           node tools/check_with_agent_guild.mjs build/pieces .agent-guild
           if ($LASTEXITCODE -ne 0) { throw "Agent Guild refused a piece Studio made." }
+      - name: Every character the suites made passes Grove Companion's own check
+        working-directory: tools/companion_check
+        env:
+          COMPANION_CHARACTERS_RS: ${{ runner.temp }}/characters.rs
+        run: |
+          Invoke-WebRequest "https://raw.githubusercontent.com/oddessentials/agent-guild-companions/$env:COMPANIONS_COMMIT/src-tauri/src/characters.rs" -OutFile $env:COMPANION_CHARACTERS_RS
+          cargo run --locked -- ../../build/pieces
+          if ($LASTEXITCODE -ne 0) { throw "Grove Companion refused a character Studio made." }
       - name: The agents' page gives the app's own connect commands
         run: |
           & $env:GODOT --headless --path . --script res://tests/site_commands.gd
@@ -269,6 +278,14 @@ jobs:
         run: |
           node tools/check_with_agent_guild.mjs build/pieces .agent-guild
           if ($LASTEXITCODE -ne 0) { throw "Agent Guild refused a piece Studio made." }
+      - name: Every character the suites made passes Grove Companion's own check
+        working-directory: tools/companion_check
+        env:
+          COMPANION_CHARACTERS_RS: ${{ runner.temp }}/characters.rs
+        run: |
+          Invoke-WebRequest "https://raw.githubusercontent.com/oddessentials/agent-guild-companions/$env:COMPANIONS_COMMIT/src-tauri/src/characters.rs" -OutFile $env:COMPANION_CHARACTERS_RS
+          cargo run --locked -- ../../build/pieces
+          if ($LASTEXITCODE -ne 0) { throw "Grove Companion refused a character Studio made." }
       - name: The agents' page gives the app's own connect commands
         run: |
           & $env:GODOT --headless --path . --script res://tests/site_commands.gd
