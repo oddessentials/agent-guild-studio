@@ -33,6 +33,8 @@ var _section: Texture2D
 var _orbiting := false
 var _closing := false
 var _window_pids := []
+var _empty_preview: CenterContainer
+var _preview_hint: PanelContainer
 ## What closing the window ends with; tests name another.
 var on_quit := func(): get_tree().quit()
 
@@ -143,6 +145,7 @@ func _open() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
+	_preview_guidance()
 	home = HomePanel.new()
 	root.add_child(home)
 	panel = StudioPanel.new()
@@ -200,13 +203,54 @@ func _layout() -> void:
 	var view := root.size
 	if view.x <= 0.0:
 		return
-	var width := minf(PANEL_WIDTH, view.x * 0.45) if view.x >= 1000.0 else minf(PANEL_WIDTH * 1.4, view.x - GAP * 2.0)
+	var width := minf(PANEL_WIDTH, view.x - GAP * 2.0)
 	for side: Control in [home, panel]:
 		side.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		side.offset_left = GAP
 		side.offset_top = GAP
 		side.offset_right = GAP + width
 		side.offset_bottom = maxf(view.y - GAP, GAP)
+	_empty_preview.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_empty_preview.offset_left = width + GAP * 2.0
+	_empty_preview.offset_right = -GAP
+	_empty_preview.offset_top = GAP
+	_empty_preview.offset_bottom = -GAP
+	_preview_hint.size = _preview_hint.get_combined_minimum_size()
+	_preview_hint.position = Vector2((width + GAP + view.x - _preview_hint.size.x) / 2.0, GAP)
+	var dialog := layer.get_node_or_null("ConnectAgentDialog") as AcceptDialog
+	if dialog:
+		UiSkin.refit_dialog.call_deferred(dialog)
+
+func _preview_guidance() -> void:
+	_empty_preview = CenterContainer.new()
+	_empty_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_empty_preview)
+	var card := PanelContainer.new()
+	card.theme_type_variation = "Inset"
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.custom_minimum_size.x = 320
+	_empty_preview.add_child(card)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 8)
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(text)
+	for entry in [["Your preview appears here", "Heading"], ["Bring a model or recolor a look\nto see it on the stage.", "Muted"]]:
+		var line := Label.new()
+		line.text = entry[0]
+		line.theme_type_variation = entry[1]
+		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		text.add_child(line)
+	_preview_hint = PanelContainer.new()
+	_preview_hint.theme_type_variation = "Pill"
+	_preview_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_hint.hide()
+	root.add_child(_preview_hint)
+	var hint := Label.new()
+	hint.text = "Drag the preview to rotate"
+	hint.theme_type_variation = "Muted"
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_hint.add_child(hint)
 
 func _show_home() -> void:
 	if home == null or flow != null:
@@ -323,6 +367,9 @@ func open_window() -> bool:
 
 func _process(_delta: float) -> void:
 	_window_pids = _window_pids.filter(func(pid): return OS.get_process_exit_code(pid) == -1)
+	if stage != null:
+		_empty_preview.visible = stage.models.is_empty()
+		_preview_hint.visible = not stage.models.is_empty()
 
 static func window_command(exe: String, args: Array, windows := OS.get_name() == "Windows") -> Array:
 	if windows:
@@ -367,22 +414,23 @@ func _connect_dialog(exe := OS.get_executable_path()) -> void:
 	ask.ok_button_text = "Done"
 	ask.theme = skin.theme
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.custom_minimum_size.x = CONNECT_WIDTH
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 12)
 	ask.add_child(box)
+	var title := Label.new()
+	title.text = "Connect an agent"
+	title.theme_type_variation = "Heading"
+	box.add_child(title)
 	var intro := Label.new()
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.text = "Run one of these once in %s. Afterwards your agent can make characters and companions with Studio, with no window. If you move this app to another folder, run the command again." % ("Terminal" if OS.get_name() == "macOS" else "PowerShell")
-	intro.custom_minimum_size = Vector2(CONNECT_WIDTH, 0)
 	box.add_child(intro)
-	var scroll := ScrollContainer.new()
-	scroll.name = "Commands"
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(CONNECT_WIDTH + 12, minf(420.0, get_viewport().get_visible_rect().size.y - 220.0))
-	box.add_child(scroll)
 	var list := VBoxContainer.new()
+	list.name = "Commands"
 	list.add_theme_constant_override("separation", 6)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
+	box.add_child(list)
 	var before := [] if OS.has_feature("template") else ["--path", ProjectSettings.globalize_path("res://").trim_suffix("/")]
 	for entry in connect_commands(exe, before):
 		var heading := Label.new()
@@ -390,6 +438,7 @@ func _connect_dialog(exe := OS.get_executable_path()) -> void:
 		heading.theme_type_variation = "Section"
 		list.add_child(heading)
 		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
 		list.add_child(row)
 		var text := TextEdit.new()
 		text.text = entry[1]
@@ -400,6 +449,8 @@ func _connect_dialog(exe := OS.get_executable_path()) -> void:
 		row.add_child(text)
 		var copy := Button.new()
 		copy.text = "Copy"
+		copy.custom_minimum_size.x = 80
+		copy.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		copy.tooltip_text = "Copy the %s command" % entry[0]
 		var command: String = entry[1]
 		copy.pressed.connect(func():
@@ -410,9 +461,9 @@ func _connect_dialog(exe := OS.get_executable_path()) -> void:
 	docker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	docker.theme_type_variation = "Muted"
 	docker.text = "Docker Agent: add the toolset to your agent in its YAML file, with root replaced by your agent's name."
-	docker.custom_minimum_size = Vector2(CONNECT_WIDTH, 0)
 	box.add_child(docker)
 	layer.add_child(ask)
+	UiSkin.frame_dialog(ask, title)
 	ask.confirmed.connect(ask.queue_free)
 	ask.canceled.connect(ask.queue_free)
-	ask.popup_centered()
+	UiSkin.popup_dialog(ask, int(CONNECT_WIDTH + ask.get_theme_stylebox("panel").get_minimum_size().x))

@@ -64,6 +64,7 @@ func _build() -> void:
 	_note("Make characters and companions for Agent Guild from a model you have, or by recoloring a world's own.")
 	var label := Label.new()
 	label.text = "World"
+	label.theme_type_variation = "Field"
 	rows.add_child(label)
 	var pick := OptionButton.new()
 	for id in WORLD_ORDER:
@@ -95,20 +96,39 @@ func _build() -> void:
 	if pieces.is_empty():
 		_note("Pieces you save are listed here, to edit later.")
 	for piece: Dictionary in pieces:
-		var line := HBoxContainer.new()
-		rows.add_child(line)
+		var card := PanelContainer.new()
+		card.theme_type_variation = "Inset"
+		rows.add_child(card)
+		var entry := VBoxContainer.new()
+		entry.add_theme_constant_override("separation", 6)
+		card.add_child(entry)
 		var name := Label.new()
-		name.text = "%s · %s" % [piece.title, piece.slot]
-		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name.clip_text = true
-		name.tooltip_text = String(piece.get("saved", ""))
-		line.add_child(name)
+		name.text = piece.title
+		name.theme_type_variation = "Strong"
+		name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name.tooltip_text = "%s\n%s" % [piece.title, piece.get("saved", "")]
+		entry.add_child(name)
+		var slot := Label.new()
+		slot.text = piece.slot
+		slot.theme_type_variation = "Muted"
+		slot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		slot.tooltip_text = piece.slot
+		entry.add_child(slot)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 8)
+		entry.add_child(line)
 		var id: String = piece.id
 		var edit := _button("Edit", func(): edit_requested.emit(id), line)
 		edit.disabled = art == "downloading" or piece.error != ""
-		_button("Remove", func(): remove_requested.emit(id), line)
+		var remove := _button("Remove", func(): remove_requested.emit(id), line)
+		remove.theme_type_variation = "Quiet"
+		remove.tooltip_text = "Remove from this list. The saved folder is kept."
 		if piece.error != "":
-			_note("It can't be edited: %s." % piece.error, "Note")
+			var problem := Label.new()
+			problem.text = "It can't be edited: %s." % piece.error
+			problem.theme_type_variation = "Note"
+			problem.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			entry.add_child(problem)
 	_heading("Agents", false)
 	_note("An agent can make pieces with Studio for you.")
 	_button("Connect an agent…", func(): connect_requested.emit())

@@ -494,8 +494,11 @@ func _buttons() -> void:
 
 	# Choice: one of a set, filled in the accent while chosen.
 	t.set_type_variation("Choice", "Button")
-	t.set_stylebox("pressed", "Choice", primary_down)
-	t.set_stylebox("hover_pressed", "Choice", primary)
+	var choices := {"normal": normal, "hover": hover, "pressed": primary_down, "hover_pressed": primary, "disabled": disabled}
+	for state in choices:
+		var choice: StyleBoxFlat = choices[state].duplicate()
+		_margins(choice, 10, 8, 10, 8)
+		t.set_stylebox(state, "Choice", choice)
 	for c in ["font_pressed_color", "font_hover_pressed_color"]:
 		t.set_color(c, "Choice", color("accent-text"))
 
@@ -582,6 +585,7 @@ func _fields() -> void:
 		t.set_stylebox("focus", type, focused)
 		t.set_stylebox("read_only", type, field)
 		t.set_color("font_color", type, color("text"))
+		t.set_color("font_readonly_color" if type == "TextEdit" else "font_uneditable_color", type, color("text"))
 		t.set_color("font_placeholder_color", type, color("muted", 0.85))
 		t.set_color("caret_color", type, color("accent"))
 		t.set_color("selection_color", type, color("accent", 0.3))
@@ -590,6 +594,23 @@ func _fields() -> void:
 	lane.border_color = color("border")
 	t.set_stylebox("background", "ProgressBar", lane)
 	t.set_stylebox("fill", "ProgressBar", _flat(color("accent"), r))
+	var track := _flat(color("border"), 2)
+	track.content_margin_top = 2
+	track.content_margin_bottom = 2
+	t.set_stylebox("slider", "HSlider", track)
+	var filled := track.duplicate()
+	filled.bg_color = color("accent")
+	t.set_stylebox("grabber_area", "HSlider", filled)
+	var active := filled.duplicate()
+	active.bg_color = color("focus")
+	t.set_stylebox("grabber_area_highlight", "HSlider", active)
+	var knobs := {"grabber": "accent", "grabber_highlight": "focus", "grabber_disabled": "muted"}
+	for state in knobs:
+		var c := color(knobs[state])
+		t.set_icon(state, "HSlider", DPITexture.create_from_string("<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18'><circle cx='9' cy='9' r='7' fill='#%s' stroke='#%s' stroke-width='2'/></svg>" % [c.to_html(false), color("surface").to_html(false)]))
+	var slider_focus := focused.duplicate()
+	slider_focus.draw_center = false
+	t.set_stylebox("focus", "HSlider", slider_focus)
 	t.set_color("font_color", "LinkButton", color("accent"))
 	t.set_color("font_hover_color", "LinkButton", color("gold-ink"))
 
